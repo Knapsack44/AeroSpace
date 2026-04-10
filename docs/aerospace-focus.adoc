@@ -16,6 +16,8 @@ aerospace focus [-h|--help] [--ignore-floating] [--wrap-around]
 aerospace focus [-h|--help] [--ignore-floating] [--wrap-around]
                 [--boundaries <boundary>] [--boundaries-action <action>]
                 (dfs-next|dfs-prev)
+aerospace focus [-h|--help] [--ignore-floating]
+                (container-next|container-prev)
 aerospace focus [-h|--help] --window-id <window-id>
 aerospace focus [-h|--help] --dfs-index <dfs-index>
 
@@ -33,8 +35,10 @@ The floating window parent container is determined as the smallest tiling contai
 The technique eliminates the need for an additional binding for floating windows.
 This behavior can be disabled with `--ignore-floating` flag.
 
-`focus child|parent` isn't supported because the necessity of this operation is under the question.
-https://github.com/nikitabobko/AeroSpace/issues/5
+`focus container-next|container-prev` cycles within the nearest ancestor that has more than one focusable child window.
+If the direct parent container contains only one window, AeroSpace climbs upward until it finds a wider ancestor, including the workspace root if needed, and wraps within that ancestor.
+This is useful for accordion groups and nested single-child containers.
+Boundary flags like `--boundaries`, `--boundaries-action`, and `--wrap-around` are not supported for container-local cycling.
 
 // =========================================================== Options
 include::util/conditional-options-header.adoc[]
@@ -83,6 +87,11 @@ Set focus to the nearest window in the given direction.
 (dfs-next|dfs-prev)::
 Set focus to the window before or after the current window in the depth-first order (top-to-bottom and left-to-right) of windows in the current workspace tree.
 In this mode, `--boundaries` must be `workspace` (the default) and `--boundaries-action` can be set to one of `(stop|fail|wrap-around-the-workspace)`.
+
+(container-next|container-prev)::
+Set focus to the next or previous window inside the nearest ancestor that can actually cycle.
+If the focused window lives inside a single-window container, the command walks upward until it finds a wider ancestor, including the workspace root if needed.
+The command wraps within that ancestor and accepts `--ignore-floating`.
 
 // end::body[]
 

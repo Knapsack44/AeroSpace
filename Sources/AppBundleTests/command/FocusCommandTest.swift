@@ -25,9 +25,14 @@ final class FocusCommandTest: XCTestCase {
 
     func testParse() {
         XCTAssertTrue(parseCommand("focus --boundaries left").errorOrNil?.contains("Possible values") == true)
-        var expected = FocusCmdArgs(rawArgs: [], cardinalOrDfsDirection: .direction(.left))
+        var expected = FocusCmdArgs(rawArgs: [], target: .direction(.left))
         expected.rawBoundaries = .workspace
         testParseSingleCommandSucc("focus --boundaries workspace left", expected)
+        testParseSingleCommandSucc("focus container-next", FocusCmdArgs(rawArgs: [], target: .containerRelative(.containerNext)))
+        testParseSingleCommandSucc(
+            "focus --ignore-floating container-prev",
+            FocusCmdArgs(rawArgs: [], target: .containerRelative(.containerPrev)).copy(\.floatingAsTiling, false),
+        )
 
         assertEquals(
             parseCommand("focus --boundaries workspace --boundaries workspace left").errorOrNil,
@@ -40,6 +45,10 @@ final class FocusCommandTest: XCTestCase {
         assertEquals(
             parseCommand("focus --boundaries all-monitors-outer-frame dfs-next").errorOrNil,
             "(dfs-next|dfs-prev) only supports --boundaries workspace",
+        )
+        assertEquals(
+            parseCommand("focus container-next --wrap-around").errorOrNil,
+            "(container-next|container-prev) only supports --ignore-floating",
         )
 
         assertEquals(
@@ -224,6 +233,71 @@ final class FocusCommandTest: XCTestCase {
         }
 
         await parseCommand("focus left").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 1)
+    }
+
+    func testFocusContainerRelative() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            TestWindow.new(id: 1, parent: $0)
+            TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
+                $0.layout = .accordion
+                assertEquals(TestWindow.new(id: 2, parent: $0).focusWindow(), true)
+                TestWindow.new(id: 3, parent: $0)
+            }
+        }
+
+        assertEquals(focus.windowOrNil?.windowId, 2)
+        await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 3)
+        await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 2)
+        await parseCommand("focus container-prev").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 3)
+        assertNotEquals(focus.windowOrNil?.windowId, 1)
+    }
+
+    func testFocusContainerRelativeFallsBackToWorkspaceAncestor() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            TestWindow.new(id: 1, parent: $0)
+            TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
+                $0.layout = .accordion
+                assertEquals(TestWindow.new(id: 2, parent: $0).focusWindow(), true)
+            }
+        }
+
+        assertEquals(focus.windowOrNil?.windowId, 2)
+        await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 1)
+        await parseCommand("focus container-prev").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerRelativeFallsBackToNestedAncestor() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            TestWindow.new(id: 1, parent: $0)
+            TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
+                TilingContainer.newHTiles(parent: $0, adaptiveWeight: 1).apply {
+                    $0.layout = .accordion
+                    assertEquals(TestWindow.new(id: 2, parent: $0).focusWindow(), true)
+                }
+                TestWindow.new(id: 3, parent: $0)
+            }
+        }
+
+        assertEquals(focus.windowOrNil?.windowId, 2)
+        await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 3)
+        await parseCommand("focus container-prev").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerRelativeNoopWithoutWiderAncestor() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
+        }
+
+        assertEquals(focus.windowOrNil?.windowId, 1)
+        await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(focus.windowOrNil?.windowId, 1)
     }
 

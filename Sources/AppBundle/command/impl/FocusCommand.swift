@@ -22,7 +22,7 @@ struct FocusCommand: Command {
             }
         }
 
-        switch args.target {
+        switch args.resolvedTarget {
             case .direction(let direction):
                 let window = target.windowOrNil
                 if let (parent, ownIndex) = window?.closestParent(hasChildrenInDirection: direction, withLayout: nil) {
@@ -62,8 +62,29 @@ struct FocusCommand: Command {
                     }
                 }
                 return .from(bool: windows[targetIndex].focusWindow())
+            case .containerRelative(let nextPrev):
+                guard let window = target.windowOrNil else {
+                    return .fail(io.err(noWindowIsFocused))
+                }
+                return .from(bool: focusInAncestorContainer(window, nextPrev: nextPrev))
         }
     }
+}
+
+@MainActor private func focusInAncestorContainer(_ window: Window, nextPrev: ContainerFocusNextPrev) -> Bool {
+    guard let ancestor = window.parentsWithSelf
+        .first(where: { $0.allLeafWindowsRecursive.count > 1 })
+    else { return true }
+
+    let windows = ancestor.allLeafWindowsRecursive
+    guard let currentIndex = windows.firstIndex(of: window) else { return true }
+
+    let targetIndex = switch nextPrev {
+        case .containerNext: currentIndex + 1
+        case .containerPrev: currentIndex - 1
+    }
+    let wrappedIndex = (targetIndex + windows.count) % windows.count
+    return windows[wrappedIndex].focusWindow()
 }
 
 @MainActor private func hitWorkspaceBoundaries(
