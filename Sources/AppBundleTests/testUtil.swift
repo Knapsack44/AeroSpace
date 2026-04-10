@@ -94,7 +94,7 @@ extension HotkeyBinding {
 
 extension FocusCommand {
     static func new(direction: CardinalDirection) -> FocusCommand {
-        FocusCommand(args: FocusCmdArgs(rawArgs: [], cardinalOrDfsDirection: .direction(direction)))
+        FocusCommand(args: FocusCmdArgs(rawArgs: [], target: .direction(direction)))
     }
 }
 
