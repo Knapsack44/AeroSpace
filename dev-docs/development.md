@@ -56,6 +56,7 @@ If you only plan to build the debug version of AeroSpace, you can run it from th
 -   `install-from-sources.sh` - Build release build from sources and install it as `aerospace-dev` brew cask.
     This script is "work in progress".
     Use it on your own risk.
+-   `install-custom-from-sources.sh` - Build the side-by-side `AeroSpace Custom.app`, install it into `/Applications`, and install the separate `aerospace-custom` CLI binary into your `PATH`. The normal `aerospace` CLI auto-routes to `AeroSpace Custom.app` when it is running.
 
 ## IDE
 

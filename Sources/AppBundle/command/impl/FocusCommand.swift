@@ -66,23 +66,25 @@ struct FocusCommand: Command {
                 guard let window = target.windowOrNil else {
                     return .fail(io.err(noWindowIsFocused))
                 }
-                return .from(bool: focusInParentContainer(window, nextPrev: nextPrev))
+                return .from(bool: focusInAncestorContainer(window, nextPrev: nextPrev))
         }
     }
 }
 
-@MainActor private func focusInParentContainer(_ window: Window, nextPrev: ContainerFocusNextPrev) -> Bool {
-    guard let parent = window.parent as? TilingContainer else { return true }
-    let siblingWindows = parent.children.compactMap { $0 as? Window }
-    guard siblingWindows.count > 1 else { return true }
-    guard let currentIndex = siblingWindows.firstIndex(of: window) else { return true }
+@MainActor private func focusInAncestorContainer(_ window: Window, nextPrev: ContainerFocusNextPrev) -> Bool {
+    guard let ancestor = window.parentsWithSelf
+        .first(where: { $0.allLeafWindowsRecursive.count > 1 })
+    else { return true }
+
+    let windows = ancestor.allLeafWindowsRecursive
+    guard let currentIndex = windows.firstIndex(of: window) else { return true }
 
     let targetIndex = switch nextPrev {
         case .containerNext: currentIndex + 1
         case .containerPrev: currentIndex - 1
     }
-    let wrappedIndex = (targetIndex + siblingWindows.count) % siblingWindows.count
-    return siblingWindows[wrappedIndex].focusWindow()
+    let wrappedIndex = (targetIndex + windows.count) % windows.count
+    return windows[wrappedIndex].focusWindow()
 }
 
 @MainActor private func hitWorkspaceBoundaries(

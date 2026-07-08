@@ -2,8 +2,16 @@ import AppKit
 import Darwin
 import Foundation
 
-public let socketPath = "/tmp/\(aeroSpaceAppId)-\(unixUserName).sock"
 public let unixUserName = NSUserName()
+
+public func resolveSocketPath(
+    appId: String = aeroSpaceAppId,
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+) -> String {
+    environment[AEROSPACE_SOCKET_PATH] ?? "/tmp/\(appId)-\(unixUserName).sock"
+}
+
+public let socketPath = resolveSocketPath()
 public let mainModeId = "main"
 
 @TaskLocal

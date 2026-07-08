@@ -35,8 +35,9 @@ The floating window parent container is determined as the smallest tiling contai
 The technique eliminates the need for an additional binding for floating windows.
 This behavior can be disabled with `--ignore-floating` flag.
 
-`focus container-next|container-prev` cycles only among the direct child windows of the currently focused window's parent container.
-It wraps within that container and is useful for accordion groups.
+`focus container-next|container-prev` cycles within the nearest ancestor that has more than one focusable child window.
+If the direct parent container contains only one window, AeroSpace climbs upward until it finds a wider ancestor, including the workspace root if needed, and wraps within that ancestor.
+This is useful for accordion groups and nested single-child containers.
 Boundary flags like `--boundaries`, `--boundaries-action`, and `--wrap-around` are not supported for container-local cycling.
 
 // =========================================================== Options
@@ -88,8 +89,9 @@ Set focus to the window before or after the current window in the depth-first or
 In this mode, `--boundaries` must be `workspace` (the default) and `--boundaries-action` can be set to one of `(stop|fail|wrap-around-the-workspace)`.
 
 (container-next|container-prev)::
-Set focus to the next or previous sibling window inside the focused window's direct parent container.
-The command wraps within that container and accepts `--ignore-floating`.
+Set focus to the next or previous window inside the nearest ancestor that can actually cycle.
+If the focused window lives inside a single-window container, the command walks upward until it finds a wider ancestor, including the workspace root if needed.
+The command wraps within that ancestor and accepts `--ignore-floating`.
 
 // end::body[]
 

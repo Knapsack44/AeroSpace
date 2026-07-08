@@ -1,5 +1,9 @@
 # Contributing
 
+For day-to-day workflow, build, test, style, and repository layout guidance, see [AGENTS.md](./AGENTS.md).
+
+## Users cannot create GitHub Issues directly
+
 The main and the most important rule: **read the room!**
 
 * Does your patch look like typical commit in the repo?
@@ -37,9 +41,44 @@ Rules:
 
 ## Submiting code
 
-There are 2 options:
-1. Send email patches to: `echo YWVyb3NwYWNlLXBhdGNoZXNAYm9ia28ueHl6Cg== | base64 --decode`
-2. Send GitHub PRs
+One of the most useful thing you can do is to discuss issues/discussions.
+
+Imagine that you were assigned to fix the issue.
+Try to suggest the best approach and design on how to fix the issue.
+Suggest the synopsis/config format, reason in written form what is good about it, what is bad about it, what are the alternatives, etc.
+Basically, see the "Prior discussion" section in [Submit Pull Requests](#submit-pull-requests).
+
+If you have something to contribute to the conversation. Do it!
+
+Please keep the conversation to the point. Discuss one issue at a time, crossreference other issues
+
+You can take a look at the following issues:
+
+* Most voted issues: https://github.com/nikitabobko/AeroSpace/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc
+* Sometimes conversations happen on old issues that aren’t yet closed. See https://github.com/nikitabobko/AeroSpace/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc
+* Issues that are unclear on how to fix, or issues that require design of the interface (CLI or config interface) are tagged with `design-needed` tag https://github.com/nikitabobko/AeroSpace/issues?q=is%3Aissue+is%3Aopen+label%3Adesign-needed
+
+## Submit Pull Requests
+
+Small and trivial improvements can be submitted without any discussion.
+
+**Prior discussion**. For non-trivial changes, discuss the approach first in GitHub Discussions before opening a PR.
+
+Please create a new discussion and describe you want to do.
+
+Consider including
+
+* What users will observe after your change?
+* Feature interaction with existing features or potential future features
+* What use cases does it cover
+* What is the proposed syntax for the config
+* What is the proposed synopsis of CLI command
+* How you think it should be implemented (if you can describe it)
+* etc.
+
+Discussing that you want to do something doesn't put any obligations on you. If you don't want to start the discussion just because you're afraid that you won't do it. Don't be afraid!
+
+**Commit hygiene**. Keep commits atomic. Do not mix refactors with behavior changes in the same commit, and include the motivation in the commit message when it helps explain the change.
 
 **License Agreement**. By contributing changes to this repository, you agree to license your contributions under the MIT license.
 

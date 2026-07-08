@@ -256,7 +256,7 @@ final class FocusCommandTest: XCTestCase {
         assertNotEquals(focus.windowOrNil?.windowId, 1)
     }
 
-    func testFocusContainerRelativeNoopWithSingleFocusableChild() async {
+    func testFocusContainerRelativeFallsBackToWorkspaceAncestor() async {
         Workspace.get(byName: name).rootTilingContainer.apply {
             TestWindow.new(id: 1, parent: $0)
             TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
@@ -267,7 +267,38 @@ final class FocusCommandTest: XCTestCase {
 
         assertEquals(focus.windowOrNil?.windowId, 2)
         await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 1)
+        await parseCommand("focus container-prev").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerRelativeFallsBackToNestedAncestor() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            TestWindow.new(id: 1, parent: $0)
+            TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
+                TilingContainer.newHTiles(parent: $0, adaptiveWeight: 1).apply {
+                    $0.layout = .accordion
+                    assertEquals(TestWindow.new(id: 2, parent: $0).focusWindow(), true)
+                }
+                TestWindow.new(id: 3, parent: $0)
+            }
+        }
+
+        assertEquals(focus.windowOrNil?.windowId, 2)
+        await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 3)
+        await parseCommand("focus container-prev").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerRelativeNoopWithoutWiderAncestor() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
+        }
+
+        assertEquals(focus.windowOrNil?.windowId, 1)
+        await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 1)
     }
 
     func testFocusDfsRelative() async {
