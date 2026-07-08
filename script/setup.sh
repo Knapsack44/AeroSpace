@@ -9,6 +9,19 @@ if ! grep -q '^5\.' <<< "$BASH_VERSION"; then
     exit 1
 fi
 
+prefer-homebrew-ruby() {
+    if ! /usr/bin/which brew &> /dev/null; then
+        return
+    fi
+    for formula in ruby@3.3 ruby; do
+        ruby_prefix="$(brew --prefix "$formula" 2>/dev/null || true)"
+        if /bin/test -x "$ruby_prefix/bin/ruby"; then
+            export PATH="$ruby_prefix/bin:$PATH"
+            return
+        fi
+    done
+}
+
 add-optional-dep-to-bin() {
     if /usr/bin/which "$1" &> /dev/null; then
         /bin/cat > ".deps/bin/${2:-$1}" <<EOF
@@ -19,6 +32,7 @@ EOF
 }
 
 if /bin/test -z "${NUKE_PATH:-}"; then
+    prefer-homebrew-ruby
     /bin/rm -rf .deps/bin
     /bin/mkdir -p .deps/bin
 
@@ -27,6 +41,7 @@ if /bin/test -z "${NUKE_PATH:-}"; then
     add-optional-dep-to-bin rustc # build-shell-completion.sh
     add-optional-dep-to-bin cargo # build-shell-completion.sh
     add-optional-dep-to-bin brew # install-from-sources.sh
+    add-optional-dep-to-bin ruby
     add-optional-dep-to-bin bundle # build-docs.sh
     add-optional-dep-to-bin bundler # build-docs.sh
     add-optional-dep-to-bin xcbeautify # build-release.sh
