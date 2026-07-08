@@ -14,16 +14,16 @@ done
 
 swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -warnings-as-errors
 
-xcodebuild -project AeroSpace.xcodeproj \
+xcodebuild -project xcode/AeroSpace.xcodeproj \
     -scheme AeroSpaceCustom \
     -destination "generic/platform=macOS" \
     -configuration Release \
-    -derivedDataPath .xcode-build-custom \
+    -derivedDataPath xcode/.xcode-build-custom \
     CODE_SIGNING_ALLOWED=NO \
     build
 
 rm -rf "/Applications/AeroSpace Custom.app"
-cp -r ".xcode-build-custom/Build/Products/Release/AeroSpace Custom.app" /Applications
+cp -r "xcode/.xcode-build-custom/Build/Products/Release/AeroSpace Custom.app" /Applications
 xattr -dr com.apple.quarantine "/Applications/AeroSpace Custom.app" 2>/dev/null || true
 codesign --force --sign - "/Applications/AeroSpace Custom.app"
 

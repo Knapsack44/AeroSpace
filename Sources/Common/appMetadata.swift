@@ -73,7 +73,7 @@ public func resolveAeroSpaceCliTarget(
 }
 
 public func resolveAeroSpaceAppId(
-    isCli: Bool = isCli,
+    isCli: Bool,
     environment: [String: String] = ProcessInfo.processInfo.environment,
     bundle: Bundle = .main,
 ) -> String {
@@ -89,8 +89,15 @@ public func resolveAeroSpaceAppId(
     }()
 }
 
+public func resolveAeroSpaceAppId(
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+    bundle: Bundle = .main,
+) -> String {
+    resolveAeroSpaceAppId(isCli: isCli, environment: environment, bundle: bundle)
+}
+
 public func resolveAeroSpaceAppName(
-    isCli: Bool = isCli,
+    isCli: Bool,
     environment: [String: String] = ProcessInfo.processInfo.environment,
     bundle: Bundle = .main,
 ) -> String {
@@ -104,6 +111,13 @@ public func resolveAeroSpaceAppName(
             stableAeroSpaceAppName
         #endif
     }()
+}
+
+public func resolveAeroSpaceAppName(
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+    bundle: Bundle = .main,
+) -> String {
+    resolveAeroSpaceAppName(isCli: isCli, environment: environment, bundle: bundle)
 }
 
 public let aeroSpaceAppId: String = resolveAeroSpaceAppId()

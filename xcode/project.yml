@@ -54,9 +54,9 @@ targets:
     platform: macOS
     deploymentTarget: "13.0"
     sources:
-      - "Sources/AeroSpaceApp"
-      - "resources"
-      - "docs/config-examples/default-config.toml"
+      - "../Sources/AeroSpaceApp"
+      - "../resources"
+      - "../docs/config-examples/default-config.toml"
     dependencies:
       - package: AeroSpacePackage
         product: AppBundle
@@ -77,7 +77,7 @@ targets:
           SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
           GCC_TREAT_WARNINGS_AS_ERRORS: YES
     entitlements:
-      path: resources/AeroSpace.entitlements
+      path: ../resources/AeroSpace.entitlements
       properties:
         # Accessibility API doesn't work in sandboxed apps
         com.apple.security.app-sandbox: false

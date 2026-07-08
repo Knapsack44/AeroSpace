@@ -38,20 +38,43 @@ swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -
 
 rm -rf .release && mkdir .release
 
-cd ./xcode
-    xcode_configuration="Release"
-    xcodebuild -version
-    xcodebuild-pretty ../.release/xcodebuild.log clean build \
-        -scheme AeroSpace \
-        -destination "generic/platform=macOS" \
-        -configuration "$xcode_configuration" \
-        -derivedDataPath .xcode-build
-cd -
+xcode_configuration="Release"
+xcode_derived_data_path=".xcode-build"
+
+run-xcodebuild() {
+    scheme="$1"
+    log_file="$2"
+    (
+        cd ./xcode
+        xcodebuild_args=(
+            clean build
+            -scheme "$scheme"
+            -destination "generic/platform=macOS"
+            -configuration "$xcode_configuration"
+            -derivedDataPath "$xcode_derived_data_path"
+        )
+        if test "$codesign_identity" = "-"; then
+            xcodebuild_args+=(CODE_SIGNING_ALLOWED=NO)
+        fi
+        xcodebuild-pretty "../.release/$log_file" "${xcodebuild_args[@]}"
+    )
+}
+
+sign-app-bundle-if-needed() {
+    app_path="$1"
+    if test "$codesign_identity" = "-"; then
+        codesign --force --sign - "$app_path"
+    fi
+}
+
+cd ./xcode && xcodebuild -version && cd - > /dev/null
+run-xcodebuild AeroSpace xcodebuild.log
 
 git checkout .
 
-cp -r "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" .release
+cp -r "xcode/$xcode_derived_data_path/Build/Products/$xcode_configuration/AeroSpace.app" .release
 cp -r .build/apple/Products/Release/aerospace .release
+sign-app-bundle-if-needed ".release/AeroSpace.app"
 
 ################
 ### SIGN CLI ###
@@ -113,13 +136,9 @@ EOF
 validate-app-bundle "AeroSpace.app" "AeroSpace"
 
 if test "$build_custom_app" = 1; then
-    xcodebuild-pretty .release/custom-xcodebuild.log clean build \
-        -scheme AeroSpaceCustom \
-        -destination "generic/platform=macOS" \
-        -configuration "$xcode_configuration" \
-        -derivedDataPath .xcode-build
-
-    cp -r ".xcode-build/Build/Products/$xcode_configuration/AeroSpace Custom.app" .release
+    run-xcodebuild AeroSpaceCustom custom-xcodebuild.log
+    cp -r "xcode/$xcode_derived_data_path/Build/Products/$xcode_configuration/AeroSpace Custom.app" .release
+    sign-app-bundle-if-needed ".release/AeroSpace Custom.app"
     validate-app-bundle "AeroSpace Custom.app" "AeroSpace Custom"
 fi
 
