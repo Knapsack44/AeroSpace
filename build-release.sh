@@ -23,6 +23,7 @@ done
 
 ./generate.sh
 ./script/check-uncommitted-files.sh
+trap 'git checkout . > /dev/null' EXIT
 ./generate.sh --build-version "$build_version" --codesign-identity "$codesign_identity" --generate-git-hash
 
 swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -warnings-as-errors # CLI
@@ -69,8 +70,6 @@ sign-app-bundle-if-needed() {
 
 cd ./xcode && xcodebuild -version && cd - > /dev/null
 run-xcodebuild AeroSpace xcodebuild.log
-
-git checkout .
 
 cp -r "xcode/$xcode_derived_data_path/Build/Products/$xcode_configuration/AeroSpace.app" .release
 cp -r .build/apple/Products/Release/aerospace .release
