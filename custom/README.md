@@ -24,3 +24,18 @@ configuration, or layout-memory changes.
 
 Before rewriting `custom/main`, create and push an immutable backup tag.
 Publish rewritten history only with `git push --force-with-lease`.
+
+The matching private repository
+`Knapsack44/aerospace-custom-config` stores the exact personal configuration
+and provides `/usr/local/bin/aerospace-custom-manager`. Updates are manual:
+
+```bash
+aerospace-custom-manager status
+aerospace-custom-manager verify
+aerospace-custom-manager update
+aerospace-custom-manager rollback
+```
+
+The manager checkpoints direct config edits, rebuilds the full patch stack,
+uses the stable local signing identity, retains one complete rollback release,
+and publishes `custom/main` only after the installed release passes smoke tests.
