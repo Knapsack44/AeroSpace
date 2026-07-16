@@ -119,6 +119,9 @@ extension Workspace {
 @MainActor private var onFocusChangedRecursionGuard = false
 // Should be called in refreshSession
 @MainActor func checkOnFocusChangedCallbacks_nonCancellable() async {
+    if LayoutMemoryRuntime.shared.suppressesCallbacks {
+        return
+    }
     if refreshSessionEvent?.isStartup == true {
         return
     }

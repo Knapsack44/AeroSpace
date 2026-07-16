@@ -1,0 +1,57 @@
+= aerospace-layout-memory(1)
+include::util/man-attributes.adoc[]
+:manname: aerospace-layout-memory
+// tag::purpose[]
+:manpurpose: Inspect, capture, and restore AeroSpace Custom layout-memory snapshots.
+// end::purpose[]
+
+== Synopsis
+[verse]
+// tag::synopsis[]
+aerospace layout-memory export --output <file>
+aerospace layout-memory restore [--input <file>|--version <id>] [--dry-run] [--json]
+aerospace layout-memory status [--json]
+aerospace layout-memory list [--json]
+aerospace layout-memory snapshot [--label <text>]
+aerospace layout-memory pause
+aerospace layout-memory resume
+aerospace layout-memory toggle-pause
+aerospace layout-memory pin --version <id> [--label <text>]
+aerospace layout-memory prefer --version <id>
+aerospace layout-memory unprefer
+aerospace layout-memory delete-version --version <id> [--force]
+aerospace layout-memory delete-profile --signature <id> [--force]
+aerospace layout-memory manual-change-begin
+aerospace layout-memory manual-change-end --token <token>
+// end::synopsis[]
+
+== Description
+
+// tag::body[]
+{manpurpose}
+
+This command is experimental and available only in AeroSpace Custom.
+The stable AeroSpace app does not start the layout-memory observer, timer, or automatic restore runtime.
+
+Snapshots are stored locally under
+`~/Library/Application Support/AeroSpace Custom/layout-memory/`.
+They are selected by an exact physical-monitor profile that includes stable monitor identity, main-monitor selection,
+resolution, scale, rotation, and rounded relative placement.
+No nearest-profile fallback is used.
+
+`restore --dry-run` performs profile validation, conservative window matching, and complete restore planning without
+mutating the live tree.
+An untargeted restore uses the preferred pinned snapshot for the current profile, or otherwise its latest snapshot.
+
+`pause`, `resume`, and `toggle-pause` affect automatic work only.
+Explicit snapshots, dry-runs, and restores remain available while paused.
+
+`manual-change-begin` returns a token that temporarily inhibits automatic restores.
+Every successful begin call must be paired with `manual-change-end --token <token>`.
+This is intended for scripts that perform deliberate multi-command layout changes.
+
+Pinned snapshots are retained outside the normal history limit.
+`delete-version` and `delete-profile` require `--force` when they would remove pinned or preferred data.
+// end::body[]
+
+include::util/man-footer.adoc[]

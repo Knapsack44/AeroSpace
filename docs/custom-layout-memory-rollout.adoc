@@ -1,0 +1,60 @@
+= AeroSpace Custom layout-memory rollout
+
+The layout-memory subsystem is private to AeroSpace Custom and must be rolled out in three phases.
+Do not enable automatic restores before the earlier phases have been observed under both single-monitor and docked
+monitor profiles.
+
+== Phase 1: shadow
+
+Set:
+
+[source,toml]
+----
+[custom-layout-memory]
+enabled = true
+mode = 'shadow'
+----
+
+Shadow mode writes normal snapshots and resolves every restore through monitor matching, window matching, and restore
+planning, but does not mutate windows.
+
+Verify:
+
+* exact monitor signatures remain stable across enumeration and small coordinate noise;
+* known single-monitor and docked profiles select the expected snapshot;
+* wake, unlock, and display events coalesce into one plan;
+* no sustained CPU load appears;
+* logs contain no unexpected ambiguous or missing-window matches.
+
+== Phase 2: manual
+
+Change `mode` to `manual`.
+Use `layout-memory restore --dry-run` before every first restore of a profile, then invoke an explicit restore.
+
+Verify workspace assignment, nested containers, accordion active children, floating geometry, visible workspaces, and
+focus.
+Native fullscreen windows must remain untouched, and ambiguous windows must not be guessed.
+
+== Phase 3: automatic
+
+Change `mode` to `automatic` only after both earlier phases pass.
+
+Verify dock disconnect/reconnect, sleep/wake, lock/unlock, app restart, and login scenarios.
+Automatic restores require an exact stable profile and are inhibited while paused or while a manual-layout transaction
+is active.
+
+== Operations
+
+[source,shell]
+----
+aerospace-custom layout-memory status
+aerospace-custom layout-memory list
+aerospace-custom layout-memory snapshot --label "known-good"
+aerospace-custom layout-memory restore --dry-run
+aerospace-custom layout-memory pause
+aerospace-custom layout-memory resume
+----
+
+Snapshots and state remain local under
+`~/Library/Application Support/AeroSpace Custom/layout-memory/`.
+Legacy TSV snapshots are not imported as automatic restore sources and may be retained for manual recovery.

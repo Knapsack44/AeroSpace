@@ -53,6 +53,22 @@ aerospace -h;
 
     | layout [--window-id <window_id>|--root|--workspace <workspace>|--fail-if-noop]... (<layouts>)... [--window-id <window_id>|--root|--workspace <workspace>|--fail-if-noop]...
 
+    | layout-memory export --output <file>
+    | layout-memory restore [--input <file>|--version <uuid>|--dry-run|--json]...
+    | layout-memory status [--json]
+    | layout-memory list [--json]
+    | layout-memory snapshot [--label <text>]
+    | layout-memory pause
+    | layout-memory resume
+    | layout-memory toggle-pause
+    | layout-memory pin --version <uuid> [--label <text>]
+    | layout-memory prefer --version <uuid>
+    | layout-memory unprefer
+    | layout-memory delete-version --version <uuid> [--force]
+    | layout-memory delete-profile --signature <signature> [--force]
+    | layout-memory manual-change-begin
+    | layout-memory manual-change-end --token <uuid>
+
     | macos-native-fullscreen [--fail-if-noop|--window-id <window_id>]... [on|off] [--fail-if-noop|--window-id <window_id>]...
 
     | macos-native-minimize [--window-id <window_id>]
@@ -124,6 +140,10 @@ aerospace -h;
 <mode_id> ::= {{{ aerospace config --get mode --keys }}};
 <workspace> ::= {{{ aerospace list-workspaces --monitor all --empty no }}};
 <number> ::= {{{ true }}};
+<file> ::= {{{ true }}};
+<text> ::= {{{ true }}};
+<uuid> ::= {{{ true }}};
+<signature> ::= {{{ true }}};
 <monitor_pattern> ::= {{{ true }}};
 <layouts> ::= h_tiles|v_tiles|h_accordion|v_accordion|tiles|accordion|horizontal|vertical|tiling|floating;
 

@@ -68,6 +68,23 @@ let fullscreen_help_generated = """
 let join_with_help_generated = """
     USAGE: join-with [-h|--help] [--window-id <window-id>] (left|down|up|right)
     """
+let layout_memory_help_generated = """
+    USAGE: layout-memory export --output <file>
+       OR: layout-memory restore [--input <file>|--version <id>] [--dry-run] [--json]
+       OR: layout-memory status [--json]
+       OR: layout-memory list [--json]
+       OR: layout-memory snapshot [--label <text>]
+       OR: layout-memory pause
+       OR: layout-memory resume
+       OR: layout-memory toggle-pause
+       OR: layout-memory pin --version <id> [--label <text>]
+       OR: layout-memory prefer --version <id>
+       OR: layout-memory unprefer
+       OR: layout-memory delete-version --version <id> [--force]
+       OR: layout-memory delete-profile --signature <id> [--force]
+       OR: layout-memory manual-change-begin
+       OR: layout-memory manual-change-end --token <token>
+    """
 let layout_help_generated = """
     USAGE: layout [-h|--help] [--window-id <window-id>|--workspace <workspace>]
                   [--root] [--fail-if-noop]
