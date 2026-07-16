@@ -1,0 +1,58 @@
+schema-version = 1
+upstream-base = 'v0.21.2-Beta'
+
+[[patch]]
+id = 'container-local-focus'
+commit-subject = 'Add container-local focus cycling'
+status = 'submitted'
+upstream-reference = 'https://github.com/nikitabobko/AeroSpace/pull/2048'
+tests = ['FocusCommandTest']
+retire-when = 'Upstream provides equivalent container-next/container-prev cycling with ancestor fallback and all retained tests pass.'
+
+[[patch]]
+id = 'custom-app-bundle'
+commit-subject = 'Add side-by-side AeroSpace Custom build'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['AppMetadataTest']
+retire-when = 'Never retire automatically; this defines the Custom product identity.'
+
+[[patch]]
+id = 'custom-cli-routing'
+commit-subject = 'Route CLI to running AeroSpace Custom'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['AppMetadataTest']
+retire-when = 'Retire only if upstream supports equivalent runtime target selection without changing vanilla defaults.'
+
+[[patch]]
+id = 'ax-registration-backoff'
+commit-subject = 'Throttle failed app registration retries'
+status = 'submitted'
+upstream-reference = 'https://github.com/nikitabobko/AeroSpace/discussions/2084'
+tests = ['FailedRegistrationBackoffTest']
+retire-when = 'Upstream prevents tight failed AX registration retries and the CPU regression test passes.'
+
+[[patch]]
+id = 'avoid-redundant-frame-writes'
+commit-subject = 'Avoid redundant accessibility frame writes'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['AxFrameUpdateDecisionTest']
+retire-when = 'Upstream avoids equivalent no-op AX size and position writes and the retained regression test passes.'
+
+[[patch]]
+id = 'delayed-focus-follows-mouse'
+commit-subject = 'Stabilize delayed focus follows mouse'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['ConfigTest']
+retire-when = 'Upstream provides the same delayed overlapping-window behavior and retained tests pass.'
+
+[[patch]]
+id = 'monitor-layout-memory'
+commit-subject = 'Add native monitor-aware layout memory'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['LayoutMemory']
+retire-when = 'Retire only if upstream supplies equivalent versioned monitor-profile snapshots, conservative matching, transactional restore, and manual controls.'
