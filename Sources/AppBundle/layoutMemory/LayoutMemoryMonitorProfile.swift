@@ -45,7 +45,7 @@ struct LayoutMemoryMonitorSnapshot: Codable, Equatable, Sendable {
     let rotationDegrees: Double
     let isMain: Bool
 
-    fileprivate var stableIdentity: String? {
+    var stableIdentity: String? {
         if let displayUuid, !displayUuid.isEmpty {
             return "uuid:\(displayUuid.lowercased())"
         }
@@ -107,6 +107,19 @@ struct LayoutMemoryMonitorProfile: Codable, Equatable, Sendable {
             result.append(String(byte, radix: 16))
         }
         return .init(signature: digest, monitors: canonical)
+    }
+
+    func identity(for snapshot: LayoutMemoryMonitorSnapshot) throws -> String {
+        let targetIdentity = snapshot.stableIdentity
+        guard let match = monitors.first(where: { monitor in
+            monitor.stableIdentity == targetIdentity ||
+                (targetIdentity == nil && monitor.isMain == snapshot.isMain &&
+                    monitor.normalizedName == LayoutMemoryMonitorSnapshot.normalizeName(snapshot.normalizedName))
+        }), let identity = match.stableIdentity
+        else {
+            throw LayoutMemoryExportError.noMonitorIdentity(snapshot.normalizedName)
+        }
+        return identity
     }
 }
 
