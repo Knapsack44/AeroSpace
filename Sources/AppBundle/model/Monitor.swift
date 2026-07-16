@@ -7,6 +7,12 @@ private struct MonitorImpl {
     let rect: Rect
     let visibleRect: Rect
     let isMain: Bool
+    let displayUuid: String?
+    let vendorNumber: UInt32
+    let modelNumber: UInt32
+    let serialNumber: UInt32
+    let backingScale: Double
+    let rotationDegrees: Double
 }
 
 extension MonitorImpl: Monitor {
@@ -24,6 +30,12 @@ protocol Monitor: AeroAny {
     var width: CGFloat { get }
     var height: CGFloat { get }
     var isMain: Bool { get }
+    var displayUuid: String? { get }
+    var vendorNumber: UInt32 { get }
+    var modelNumber: UInt32 { get }
+    var serialNumber: UInt32 { get }
+    var backingScale: Double { get }
+    var rotationDegrees: Double { get }
 }
 
 final class LazyMonitor: Monitor {
@@ -33,6 +45,12 @@ final class LazyMonitor: Monitor {
     let width: CGFloat
     let height: CGFloat
     let isMain: Bool
+    let displayUuid: String?
+    let vendorNumber: UInt32
+    let modelNumber: UInt32
+    let serialNumber: UInt32
+    let backingScale: Double
+    let rotationDegrees: Double
     private var _rect: Rect?
     private var _visibleRect: Rect?
 
@@ -43,6 +61,13 @@ final class LazyMonitor: Monitor {
         self.height = screen.frame.height // Don't call rect because it would cause recursion during mainMonitor init
         self.screen = screen
         self.isMain = isMain
+        let metadata = screen.layoutMemoryDisplayMetadata
+        self.displayUuid = metadata.displayUuid
+        self.vendorNumber = metadata.vendorNumber
+        self.modelNumber = metadata.modelNumber
+        self.serialNumber = metadata.serialNumber
+        self.backingScale = Double(screen.backingScaleFactor)
+        self.rotationDegrees = metadata.rotationDegrees
     }
 
     var rect: Rect {
@@ -60,12 +85,41 @@ final class LazyMonitor: Monitor {
 //    kAXFocusedWindowChangedNotification callbacks.
 extension NSScreen {
     fileprivate func toMonitor(monitorAppKitNsScreenScreensId: Int) -> Monitor {
-        MonitorImpl(
+        let metadata = layoutMemoryDisplayMetadata
+        return MonitorImpl(
             monitorAppKitNsScreenScreensId: monitorAppKitNsScreenScreensId,
             name: localizedName,
             rect: rect,
             visibleRect: visibleRect,
             isMain: isMainScreen,
+            displayUuid: metadata.displayUuid,
+            vendorNumber: metadata.vendorNumber,
+            modelNumber: metadata.modelNumber,
+            serialNumber: metadata.serialNumber,
+            backingScale: Double(backingScaleFactor),
+            rotationDegrees: metadata.rotationDegrees,
+        )
+    }
+
+    fileprivate var layoutMemoryDisplayMetadata: (
+        displayUuid: String?,
+        vendorNumber: UInt32,
+        modelNumber: UInt32,
+        serialNumber: UInt32,
+        rotationDegrees: Double,
+    ) {
+        guard let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+            return (nil, 0, 0, 0, 0)
+        }
+        let displayId = CGDirectDisplayID(number.uint32Value)
+        let uuid = unsafe CGDisplayCreateUUIDFromDisplayID(displayId)?.takeRetainedValue()
+        let uuidString = uuid.flatMap { CFUUIDCreateString(nil, $0) as String? }
+        return (
+            uuidString,
+            CGDisplayVendorNumber(displayId),
+            CGDisplayModelNumber(displayId),
+            CGDisplaySerialNumber(displayId),
+            CGDisplayRotation(displayId),
         )
     }
 
@@ -92,6 +146,12 @@ private let testMonitor = MonitorImpl(
     rect: testMonitorRect,
     visibleRect: testMonitorRect,
     isMain: true,
+    displayUuid: "test-monitor",
+    vendorNumber: 0,
+    modelNumber: 0,
+    serialNumber: 0,
+    backingScale: 1,
+    rotationDegrees: 0,
 )
 
 var mainMonitor: Monitor {
