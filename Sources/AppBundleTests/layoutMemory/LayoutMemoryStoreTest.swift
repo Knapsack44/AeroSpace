@@ -51,6 +51,46 @@ final class LayoutMemoryStoreTest: XCTestCase {
         XCTAssertThrowsError(try store.save(base.copy(windows: Array(repeating: base.windows[0], count: 501))))
     }
 
+    func testPinnedPreferredVersionRequiresForceToDelete() throws {
+        let store = LayoutMemoryStore(rootUrl: temporaryDirectory(), historyLimit: 5)
+        let snapshot = makeSnapshot()
+        let stored = try store.save(snapshot)
+
+        try store.pin(
+            signature: snapshot.monitorProfile.signature,
+            version: stored.snapshotId,
+            label: "known-good",
+        )
+        try store.prefer(signature: snapshot.monitorProfile.signature, version: stored.snapshotId)
+
+        let pinned = try XCTUnwrap(store.list(signature: snapshot.monitorProfile.signature).singleOrNil())
+        assertTrue(pinned.isPinned)
+        assertEquals(pinned.label, "known-good")
+        XCTAssertThrowsError(try store.deleteVersion(
+            signature: snapshot.monitorProfile.signature,
+            version: stored.snapshotId,
+            force: false,
+        ))
+
+        try store.deleteVersion(
+            signature: snapshot.monitorProfile.signature,
+            version: stored.snapshotId,
+            force: true,
+        )
+        assertTrue(try store.list(signature: snapshot.monitorProfile.signature).isEmpty)
+    }
+
+    func testProfileContainingPinnedVersionRequiresForceToDelete() throws {
+        let store = LayoutMemoryStore(rootUrl: temporaryDirectory(), historyLimit: 5)
+        let snapshot = makeSnapshot().copy(label: "baseline", isPinned: true)
+        _ = try store.save(snapshot)
+
+        XCTAssertThrowsError(try store.deleteProfile(signature: snapshot.monitorProfile.signature, force: false))
+        try store.deleteProfile(signature: snapshot.monitorProfile.signature, force: true)
+
+        assertTrue(try store.profileSignatures().isEmpty)
+    }
+
     private func temporaryDirectory() -> URL {
         let url = FileManager.default.temporaryDirectory
             .appending(component: "aerospace-layout-memory-tests-\(UUID().uuidString)")

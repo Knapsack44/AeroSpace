@@ -108,4 +108,21 @@ struct LayoutMemorySnapshot: Codable, Equatable, Sendable {
             isPinned: isPinned ?? self.isPinned,
         )
     }
+
+    func withMetadata(label: String?, isPinned: Bool) -> Self {
+        .init(
+            schemaVersion: schemaVersion,
+            snapshotId: snapshotId,
+            createdAt: createdAt,
+            appVersion: appVersion,
+            appBuildHash: appBuildHash,
+            monitorProfile: monitorProfile,
+            fingerprint: fingerprint,
+            workspaces: workspaces,
+            windows: windows,
+            focus: focus,
+            label: label,
+            isPinned: isPinned,
+        )
+    }
 }

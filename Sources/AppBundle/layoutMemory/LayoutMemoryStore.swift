@@ -15,6 +15,9 @@ enum LayoutMemoryStoreError: Error {
     case tooManyWindows(Int)
     case snapshotTooLarge(Int)
     case invalidSnapshot
+    case versionNotFound(UUID)
+    case pinnedVersionRequiresForce
+    case profileContainsPinnedVersions
 }
 
 final class LayoutMemoryStore {
@@ -95,6 +98,80 @@ final class LayoutMemoryStore {
         .sorted { $0.createdAt > $1.createdAt }
     }
 
+    func selectedSnapshot(signature: String, version: UUID? = nil) throws -> LayoutMemorySnapshot? {
+        let versions = try list(signature: signature)
+        if let version {
+            guard let match = versions.first(where: { $0.snapshotId == version }) else {
+                throw LayoutMemoryStoreError.versionNotFound(version)
+            }
+            return try loadSnapshot(at: match.url)
+        }
+        if let preferred = try preferredVersion(signature: signature),
+           let match = versions.first(where: { $0.snapshotId == preferred })
+        {
+            return try loadSnapshot(at: match.url)
+        }
+        return try versions.first.map { try loadSnapshot(at: $0.url) }
+    }
+
+    func pin(signature: String, version: UUID, label: String?) throws {
+        guard let stored = try list(signature: signature).first(where: { $0.snapshotId == version }) else {
+            throw LayoutMemoryStoreError.versionNotFound(version)
+        }
+        let snapshot = try loadSnapshot(at: stored.url).withMetadata(label: label ?? stored.label, isPinned: true)
+        _ = try save(snapshot)
+    }
+
+    func prefer(signature: String, version: UUID) throws {
+        guard try list(signature: signature).contains(where: { $0.snapshotId == version && $0.isPinned }) else {
+            throw LayoutMemoryStoreError.versionNotFound(version)
+        }
+        let url = preferredUrl(signature: signature)
+        try ensureDirectory(url.deletingLastPathComponent())
+        let data = try JSONEncoder().encode(version)
+        try data.write(to: url, options: .atomic)
+        try fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+    }
+
+    func unprefer(signature: String) throws {
+        let url = preferredUrl(signature: signature)
+        if fileManager.fileExists(atPath: url.path) {
+            try fileManager.removeItem(at: url)
+        }
+    }
+
+    func deleteVersion(signature: String, version: UUID, force: Bool) throws {
+        guard let stored = try list(signature: signature).first(where: { $0.snapshotId == version }) else {
+            throw LayoutMemoryStoreError.versionNotFound(version)
+        }
+        let preferredVersion = try preferredVersion(signature: signature)
+        if (stored.isPinned || preferredVersion == version), !force {
+            throw LayoutMemoryStoreError.pinnedVersionRequiresForce
+        }
+        try fileManager.removeItem(at: stored.url)
+        if preferredVersion == version {
+            try unprefer(signature: signature)
+        }
+    }
+
+    func deleteProfile(signature: String, force: Bool) throws {
+        let versions = try list(signature: signature)
+        let preferredVersion = try preferredVersion(signature: signature)
+        if !force, versions.contains(where: \.isPinned) || preferredVersion != nil {
+            throw LayoutMemoryStoreError.profileContainsPinnedVersions
+        }
+        let url = rootUrl.appending(component: "profiles").appending(component: signature)
+        if fileManager.fileExists(atPath: url.path) {
+            try fileManager.removeItem(at: url)
+        }
+    }
+
+    func profileSignatures() throws -> [String] {
+        let profiles = rootUrl.appending(component: "profiles")
+        guard fileManager.fileExists(atPath: profiles.path) else { return [] }
+        return try fileManager.contentsOfDirectory(atPath: profiles.path).sorted()
+    }
+
     private func validate(_ snapshot: LayoutMemorySnapshot) throws {
         guard snapshot.schemaVersion == LayoutMemorySnapshot.currentSchemaVersion else {
             throw LayoutMemoryStoreError.unsupportedSchema(snapshot.schemaVersion)
@@ -121,6 +198,19 @@ final class LayoutMemoryStore {
             .appending(component: "profiles")
             .appending(component: signature)
             .appending(component: "snapshots")
+    }
+
+    private func preferredUrl(signature: String) -> URL {
+        rootUrl
+            .appending(component: "profiles")
+            .appending(component: signature)
+            .appending(component: "preferred.json")
+    }
+
+    private func preferredVersion(signature: String) throws -> UUID? {
+        let url = preferredUrl(signature: signature)
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        return try JSONDecoder().decode(UUID.self, from: Data(contentsOf: url))
     }
 
     private func version(_ snapshot: LayoutMemorySnapshot, at url: URL) -> LayoutMemoryStoredVersion {
