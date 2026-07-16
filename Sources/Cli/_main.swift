@@ -15,6 +15,7 @@ let usage =
 struct Main {
     static func main() async {
         let args = CommandLine.arguments.slice(1...) ?? []
+        let cliTarget = resolveAeroSpaceCliTarget()
 
         if args.isEmpty {
             exit(EXIT_CODE_TWO, err: usage)
@@ -24,7 +25,7 @@ struct Main {
         }
 
         if args.first == "--version" || args.first == "-v" {
-            let connection = NWConnection(to: NWEndpoint.unix(path: socketPath), using: .tcp)
+            let connection = NWConnection(to: NWEndpoint.unix(path: cliTarget.socketPath), using: .tcp)
             let serverVersionAndHash: String?
             switch await connection.initConnection().error {
                 case nil:
@@ -38,16 +39,16 @@ struct Main {
             }
             print(
                 """
-                aerospace CLI client version: \(cliClientVersionAndHash)
-                AeroSpace.app server version: \(serverVersionAndHash ?? "Unknown. The server is not responding")
+                \(cliTarget.appName) CLI client version: \(cliClientVersionAndHash)
+                \(cliTarget.appName).app server version: \(serverVersionAndHash ?? "Unknown. The server is not running")
                 """,
             )
             if serverVersionAndHash != nil && cliClientVersionAndHash != serverVersionAndHash {
                 eprint(
                     """
-                    Warning: AeroSpace client/server versions don't match. Possible fixes:
-                      - Restart AeroSpace.app (server restart is required after each update)
-                      - Reinstall and restart AeroSpace (corrupted installation)
+                    Warning: \(cliTarget.appName) client/server versions don't match. Possible fixes:
+                      - Restart \(cliTarget.appName).app (server restart is required after each update)
+                      - Reinstall and restart \(cliTarget.appName) (corrupted installation)
                     """,
                 )
             }
@@ -67,14 +68,14 @@ struct Main {
 
         let failExitCode = parsedArgs.failExitCode
 
-        let connection = NWConnection(to: NWEndpoint.unix(path: socketPath), using: .tcp)
+        let connection = NWConnection(to: NWEndpoint.unix(path: cliTarget.socketPath), using: .tcp)
 
         switch await connection.initConnection().error {
             case nil: break
             case .customError(let msg):
                 exit(failExitCode, err: msg)
             case .nwError(let e):
-                exit(failExitCode, err: "Can't connect to AeroSpace server. Is AeroSpace.app running?\n\(e.localizedDescription)")
+                exit(failExitCode, err: "Can't connect to \(cliTarget.appName) server. Is \(cliTarget.appName).app running?\n\(e.localizedDescription)")
         }
 
         var stdin = ""
@@ -121,12 +122,12 @@ struct Main {
         if ans.exitCode != EXIT_CODE_ZERO && ans.serverVersionAndHash != cliClientVersionAndHash {
             eprint(
                 """
-                Warning: AeroSpace client/server versions don't match
-                  - aerospace CLI client version: \(cliClientVersionAndHash)
-                  - AeroSpace.app server version: \(ans.serverVersionAndHash)
+                Warning: \(cliTarget.appName) client/server versions don't match
+                  - \(cliTarget.appName) CLI client version: \(cliClientVersionAndHash)
+                  - \(cliTarget.appName).app server version: \(ans.serverVersionAndHash)
                   Possible fixes:
-                  - Restart AeroSpace.app (server restart is required after each update)
-                  - Reinstall and restart AeroSpace (corrupted installation)
+                  - Restart \(cliTarget.appName).app (server restart is required after each update)
+                  - Reinstall and restart \(cliTarget.appName) (corrupted installation)
                 """,
             )
         }
