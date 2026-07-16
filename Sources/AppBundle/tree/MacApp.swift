@@ -26,6 +26,7 @@ final class MacApp: AbstractApp {
     //      and make deinitialization automatic in deinit
     @MainActor static var allAppsMap: [pid_t: MacApp] = [:]
     @MainActor private static var wipPids: [pid_t: AwaitableOneTimeBroadcastLatch] = [:]
+    @MainActor private static var failedRegistrationBackoff = FailedRegistrationBackoff<pid_t>(delay: 5)
 
     private init(
         _ nsApp: NSRunningApplication,
@@ -53,50 +54,57 @@ final class MacApp: AbstractApp {
         // AX requests crash if you send them to yourself
         if pid == myPid { return nil }
 
-        if let existing = allAppsMap[pid] { return existing }
-        try checkCancellation()
-        if let wip = wipPids[pid] {
-            try await wip.await()
-            return allAppsMap[pid]
-        }
-        let wip = AwaitableOneTimeBroadcastLatch()
-        wipPids[pid] = wip
+        while true {
+            if let existing = allAppsMap[pid] { return existing }
+            if !failedRegistrationBackoff.shouldAttempt(pid, now: Date()) { return nil }
+            try checkCancellation()
+            if let wip = wipPids[pid] {
+                try await wip.await()
+                continue
+            }
+            let wip = AwaitableOneTimeBroadcastLatch()
+            wipPids[pid] = wip
 
-        let thread = Thread {
-            $axTaskLocalAppThreadToken.withValue(AxAppThreadToken(pid: pid, idForDebug: nsApp.idForDebug)) {
-                let axApp = AXUIElementCreateApplication(nsApp.processIdentifier)
-                let handlers: HandlerToNotifKeyMapping = unsafe [
-                    (refreshObs, [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification]),
-                ]
-                let job = RunLoopJob(.cancellable)
-                let subscriptions = (try? unsafe AxSubscription.bulkSubscribe(nsApp, axApp, job, handlers)) ?? []
-                let isGood = !subscriptions.isEmpty
-                let app = isGood ? MacApp(nsApp, axApp, subscriptions, Thread.current) : nil
+            let thread = Thread {
+                $axTaskLocalAppThreadToken.withValue(AxAppThreadToken(pid: pid, idForDebug: nsApp.idForDebug)) {
+                    let axApp = AXUIElementCreateApplication(nsApp.processIdentifier)
+                    let handlers: HandlerToNotifKeyMapping = unsafe [
+                        (refreshObs, [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification]),
+                    ]
+                    let job = RunLoopJob(.cancellable)
+                    let subscriptions = (try? unsafe AxSubscription.bulkSubscribe(nsApp, axApp, job, handlers)) ?? []
+                    let isGood = !subscriptions.isEmpty
+                    let app = isGood ? MacApp(nsApp, axApp, subscriptions, Thread.current) : nil
 
-                let appAxSubscriptionsThreadGuarded = app?.appAxSubscriptions
-                let windowsThreadGuarded = app?.windows
-                let axAppThreadGuarded = app?.axApp
+                    let appAxSubscriptionsThreadGuarded = app?.appAxSubscriptions
+                    let windowsThreadGuarded = app?.windows
+                    let axAppThreadGuarded = app?.axApp
 
-                Task.startUnstructured { @MainActor in
-                    allAppsMap[pid] = app
-                    wipPids[pid] = nil
-                    await wip.signalToAll()
-                }
-                if isGood {
-                    CFRunLoopRun()
+                    Task.startUnstructured { @MainActor in
+                        if let app {
+                            allAppsMap[pid] = app
+                            failedRegistrationBackoff.clear(pid)
+                        } else {
+                            failedRegistrationBackoff.recordFailure(pid, now: Date())
+                        }
+                        wipPids[pid] = nil
+                        await wip.signalToAll()
+                    }
+                    if isGood {
+                        CFRunLoopRun()
 
-                    // Destroy AX objects in reverse order of their creation
-                    appAxSubscriptionsThreadGuarded?.destroy()
-                    windowsThreadGuarded?.destroy()
-                    axAppThreadGuarded?.destroy()
+                        // Destroy AX objects in reverse order of their creation
+                        appAxSubscriptionsThreadGuarded?.destroy()
+                        windowsThreadGuarded?.destroy()
+                        axAppThreadGuarded?.destroy()
+                    }
                 }
             }
-        }
-        thread.name = "AxAppThread \(nsApp.idForDebug)"
-        thread.start()
+            thread.name = "AxAppThread \(nsApp.idForDebug)"
+            thread.start()
 
-        try await wip.await()
-        return allAppsMap[pid]
+            try await wip.await()
+        }
     }
 
     func closeAndUnregisterAxWindow(_ windowId: UInt32) {
@@ -331,7 +339,10 @@ final class MacApp: AbstractApp {
     }
 
     private func destroy() async {
-        _ = await Task.startUnstructured { @MainActor [pid] in _ = MacApp.allAppsMap.removeValue(forKey: pid) }.result
+        _ = await Task.startUnstructured { @MainActor [pid] in
+            _ = MacApp.allAppsMap.removeValue(forKey: pid)
+            MacApp.failedRegistrationBackoff.clear(pid)
+        }.result
         for (_, job) in setFrameJobs {
             job.cancel()
         }
