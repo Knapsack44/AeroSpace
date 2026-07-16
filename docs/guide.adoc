@@ -38,6 +38,10 @@ brew install --cask nikitabobko/tap/aerospace@0.12.0
 . Put unpacked `AeroSpace-v$VERSION/bin/aerospace` anywhere to `$PATH`
 (The step is optional. It is only needed if you want to be able to interact with AeroSpace from CLI)
 
+If you want a side-by-side install that does not replace the Homebrew app, use the custom build and put `AeroSpace Custom.app` to `/Applications` instead.
+The custom app has its own bundle identifier, Accessibility permission, and socket path, so it can coexist with the normal `AeroSpace.app`.
+The custom build also installs a separate `aerospace-custom` CLI binary, and the normal `aerospace` command auto-routes to `AeroSpace Custom.app` when it is running.
+
 If you see this message
 
 ----

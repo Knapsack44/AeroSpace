@@ -15,6 +15,12 @@ rm -rf .shell-completion && mkdir -p \
     --bash-script .shell-completion/bash/aerospace
 
 # Check basic syntax
-zsh -c 'autoload -Uz compinit; compinit; source ./.shell-completion/zsh/_aerospace'
-fish -c 'source ./.shell-completion/fish/aerospace.fish'
-bash -c 'source ./.shell-completion/bash/aerospace'
+if /usr/bin/which zsh &> /dev/null; then
+    zsh -c 'autoload -Uz compinit; compinit; source ./.shell-completion/zsh/_aerospace'
+fi
+if /usr/bin/which fish &> /dev/null; then
+    fish -c 'source ./.shell-completion/fish/aerospace.fish'
+fi
+if /usr/bin/which bash &> /dev/null; then
+    bash -c 'source ./.shell-completion/bash/aerospace'
+fi

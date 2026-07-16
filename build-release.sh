@@ -4,10 +4,12 @@ source ./script/setup.sh
 
 build_version="0.0.0-SNAPSHOT"
 codesign_identity="aerospace-codesign-certificate"
+build_custom_app=0
 while test $# -gt 0; do
     case $1 in
         --build-version) build_version="$2"; shift 2;;
         --codesign-identity) codesign_identity="$2"; shift 2;;
+        --custom-app) build_custom_app=1; shift 1;;
         *) echo "Unknown option $1" > /dev/stderr; exit 1 ;;
     esac
 done
@@ -21,6 +23,7 @@ done
 
 ./generate.sh
 ./script/check-uncommitted-files.sh
+trap 'git checkout . > /dev/null' EXIT
 ./generate.sh --build-version "$build_version" --codesign-identity "$codesign_identity" --generate-git-hash
 
 swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -warnings-as-errors # CLI
@@ -36,20 +39,41 @@ swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -
 
 rm -rf .release && mkdir .release
 
-cd ./xcode
-    xcode_configuration="Release"
-    xcodebuild -version
-    xcodebuild-pretty ../.release/xcodebuild.log clean build \
-        -scheme AeroSpace \
-        -destination "generic/platform=macOS" \
-        -configuration "$xcode_configuration" \
-        -derivedDataPath .xcode-build
-cd -
+xcode_configuration="Release"
+xcode_derived_data_path=".xcode-build"
 
-git checkout .
+run-xcodebuild() {
+    scheme="$1"
+    log_file="$2"
+    (
+        cd ./xcode
+        xcodebuild_args=(
+            clean build
+            -scheme "$scheme"
+            -destination "generic/platform=macOS"
+            -configuration "$xcode_configuration"
+            -derivedDataPath "$xcode_derived_data_path"
+        )
+        if test "$codesign_identity" = "-"; then
+            xcodebuild_args+=(CODE_SIGNING_ALLOWED=NO)
+        fi
+        xcodebuild-pretty "../.release/$log_file" "${xcodebuild_args[@]}"
+    )
+}
 
-cp -r "xcode/.xcode-build/Build/Products/$xcode_configuration/AeroSpace.app" .release
+sign-app-bundle-if-needed() {
+    app_path="$1"
+    if test "$codesign_identity" = "-"; then
+        codesign --force --sign - "$app_path"
+    fi
+}
+
+cd ./xcode && xcodebuild -version && cd - > /dev/null
+run-xcodebuild AeroSpace xcodebuild.log
+
+cp -r "xcode/$xcode_derived_data_path/Build/Products/$xcode_configuration/AeroSpace.app" .release
 cp -r .build/apple/Products/Release/aerospace .release
+sign-app-bundle-if-needed ".release/AeroSpace.app"
 
 ################
 ### SIGN CLI ###
@@ -60,28 +84,6 @@ codesign -s "$codesign_identity" .release/aerospace
 ################
 ### VALIDATE ###
 ################
-
-expected_layout=$(cat <<EOF
-.release/AeroSpace.app
-.release/AeroSpace.app/Contents
-.release/AeroSpace.app/Contents/_CodeSignature
-.release/AeroSpace.app/Contents/_CodeSignature/CodeResources
-.release/AeroSpace.app/Contents/MacOS
-.release/AeroSpace.app/Contents/MacOS/AeroSpace
-.release/AeroSpace.app/Contents/Resources
-.release/AeroSpace.app/Contents/Resources/default-config.toml
-.release/AeroSpace.app/Contents/Resources/AppIcon.icns
-.release/AeroSpace.app/Contents/Resources/Assets.car
-.release/AeroSpace.app/Contents/Info.plist
-.release/AeroSpace.app/Contents/PkgInfo
-EOF
-)
-
-if test "$expected_layout" != "$(find .release/AeroSpace.app)"; then
-    echo "!!! Expect/Actual layout don't match !!!"
-    find .release/AeroSpace.app
-    exit 1
-fi
 
 check-universal-binary() {
     if ! file "$1" | grep --fixed-string -q "Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64"; then
@@ -98,14 +100,46 @@ check-contains-hash() {
     fi
 }
 
-check-universal-binary .release/AeroSpace.app/Contents/MacOS/AeroSpace
-check-universal-binary .release/aerospace
+validate-app-bundle() {
+    app_name="$1"
+    executable_name="$2"
+    app_path=".release/$app_name"
 
-check-contains-hash .release/AeroSpace.app/Contents/MacOS/AeroSpace
-check-contains-hash .release/aerospace
+    expected_layout=$(cat <<EOF
+$app_path
+$app_path/Contents
+$app_path/Contents/_CodeSignature
+$app_path/Contents/_CodeSignature/CodeResources
+$app_path/Contents/MacOS
+$app_path/Contents/MacOS/$executable_name
+$app_path/Contents/Resources
+$app_path/Contents/Resources/default-config.toml
+$app_path/Contents/Resources/AppIcon.icns
+$app_path/Contents/Resources/Assets.car
+$app_path/Contents/Info.plist
+$app_path/Contents/PkgInfo
+EOF
+    )
 
-codesign -v .release/AeroSpace.app
-codesign -v .release/aerospace
+    if test "$expected_layout" != "$(find "$app_path")"; then
+        echo "!!! Expect/Actual layout don't match !!!"
+        find "$app_path"
+        exit 1
+    fi
+
+    check-universal-binary "$app_path/Contents/MacOS/$executable_name"
+    check-contains-hash "$app_path/Contents/MacOS/$executable_name"
+    codesign -v "$app_path"
+}
+
+validate-app-bundle "AeroSpace.app" "AeroSpace"
+
+if test "$build_custom_app" = 1; then
+    run-xcodebuild AeroSpaceCustom custom-xcodebuild.log
+    cp -r "xcode/$xcode_derived_data_path/Build/Products/$xcode_configuration/AeroSpace Custom.app" .release
+    sign-app-bundle-if-needed ".release/AeroSpace Custom.app"
+    validate-app-bundle "AeroSpace Custom.app" "AeroSpace Custom"
+fi
 
 ############
 ### PACK ###
@@ -116,6 +150,9 @@ cp -r ./legal ".release/AeroSpace-v$build_version/legal"
 cp -r .shell-completion ".release/AeroSpace-v$build_version/shell-completion"
 cd .release
     mkdir -p "AeroSpace-v$build_version/bin" && cp -r aerospace "AeroSpace-v$build_version/bin"
+    if test "$build_custom_app" = 1; then
+        cp -r aerospace "AeroSpace-v$build_version/bin/aerospace-custom"
+    fi
     cp -r AeroSpace.app "AeroSpace-v$build_version"
     zip -r "AeroSpace-v$build_version.zip" "AeroSpace-v$build_version"
 cd -
@@ -123,9 +160,11 @@ cd -
 #################
 ### Brew Cask ###
 #################
-for cask_name in aerospace aerospace-dev; do
-    ./script/build-brew-cask.sh \
-        --cask-name "$cask_name" \
-        --zip-uri ".release/AeroSpace-v$build_version.zip" \
-        --build-version "$build_version"
-done
+if test "$build_custom_app" = 0; then
+    for cask_name in aerospace aerospace-dev; do
+        ./script/build-brew-cask.sh \
+            --cask-name "$cask_name" \
+            --zip-uri ".release/AeroSpace-v$build_version.zip" \
+            --build-version "$build_version"
+    done
+fi
