@@ -10,7 +10,7 @@ while test $# -gt 0; do
     esac
 done
 
-./generate.sh --build-version "$build_version" --ignore-cmd-help --ignore-shell-parser
+./generate.sh --build-version "$build_version" --ignore-cmd-help
 
 swift build -c release --arch arm64 --arch x86_64 --product aerospace -Xswiftc -warnings-as-errors
 
