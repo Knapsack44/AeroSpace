@@ -3,7 +3,6 @@ import AppKit
 @MainActor
 final class LayoutMemorySystemObserver {
     private let handler: (LayoutMemoryEvent) -> Void
-    private var observers: [NSObjectProtocol] = []
 
     init(handler: @escaping (LayoutMemoryEvent) -> Void) {
         self.handler = handler
@@ -27,19 +26,10 @@ final class LayoutMemorySystemObserver {
         _ name: Notification.Name,
         _ event: LayoutMemoryEvent,
     ) {
-        observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        _ = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.handler(event)
             }
-        })
-    }
-
-    func stop() {
-        for observer in observers {
-            NotificationCenter.default.removeObserver(observer)
-            NSWorkspace.shared.notificationCenter.removeObserver(observer)
-            DistributedNotificationCenter.default().removeObserver(observer)
         }
-        observers = []
     }
 }

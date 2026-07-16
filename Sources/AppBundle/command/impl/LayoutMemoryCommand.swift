@@ -107,10 +107,15 @@ struct LayoutMemoryCommand: Command {
 }
 
 private struct LayoutMemoryVersionOutput: Encodable {
+    // periphery:ignore - Serialized to JSON
     let id: UUID
+    // periphery:ignore - Serialized to JSON
     let createdAt: Date
+    // periphery:ignore - Serialized to JSON
     let fingerprint: String
+    // periphery:ignore - Serialized to JSON
     let label: String?
+    // periphery:ignore - Serialized to JSON
     let pinned: Bool
 
     init(_ version: LayoutMemoryStoredVersion) {

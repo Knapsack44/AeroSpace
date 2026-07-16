@@ -21,21 +21,32 @@ enum LayoutMemoryCoordinatorError: Error, CustomStringConvertible {
 }
 
 struct LayoutMemoryStatus: Codable, Equatable, Sendable {
+    // periphery:ignore - Serialized to JSON
     let available: Bool
+    // periphery:ignore - Serialized to JSON
     let enabled: Bool
+    // periphery:ignore - Serialized to JSON
     let mode: String
+    // periphery:ignore - Serialized to JSON
     let paused: Bool
+    // periphery:ignore - Serialized to JSON
     let monitorSignature: String?
+    // periphery:ignore - Serialized to JSON
     let snapshotCount: Int
+    // periphery:ignore - Serialized to JSON
     let pendingTransition: Bool
+    // periphery:ignore - Serialized to JSON
     let manualChangeDepth: Int
 }
 
 struct LayoutMemoryRestoreReport: Codable, Equatable, Sendable {
+    // periphery:ignore - Serialized to JSON
     let dryRun: Bool
     let result: String
     let matchedWindows: Int
+    // periphery:ignore - Serialized to JSON
     let missingWindows: Int
+    // periphery:ignore - Serialized to JSON
     let ambiguousWindows: Int
     let mutated: Bool
     let warnings: [String]
@@ -52,7 +63,6 @@ final class LayoutMemoryCoordinator {
     private let logUrl: URL
     private var observer: LayoutMemorySystemObserver?
     private var transitionTask: Task<Void, Never>?
-    private var tickTask: Task<Void, Never>?
     private var paused: Bool
     private var systemActive = true
     private var transitionStartedAt = Date()
@@ -127,7 +137,7 @@ final class LayoutMemoryCoordinator {
         }
         observer?.start()
         scheduleTransition(reason: "app-started")
-        tickTask = Task { [weak self] in
+        Task.startUnstructured { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(2))
                 await self?.tick()
@@ -280,7 +290,7 @@ final class LayoutMemoryCoordinator {
                 systemActive = false
                 transitionTask?.cancel()
                 transitionTask = nil
-                Task { [weak self] in
+                Task.startUnstructured { [weak self] in
                     try? await self?.snapshotIfEligible()
                 }
             case .didWake, .screenUnlocked, .sessionBecameActive:
@@ -303,7 +313,7 @@ final class LayoutMemoryCoordinator {
         transitionTask?.cancel()
         transitionStartedAt = Date()
         _ = transitionGate.request(signature: candidate.signature, at: Date())
-        transitionTask = Task { [weak self] in
+        transitionTask = Task.startUnstructured { [weak self] in
             guard let self else { return }
             try? await Task.sleep(for: .milliseconds(configuration.topologySampleIntervalMs))
             guard !Task.isCancelled,

@@ -2,7 +2,6 @@ enum LayoutMemoryRestorePlanningError: Error, Equatable {
     case monitorProfileMismatch
     case noMatchedWindows
     case nativeFullscreenActive
-    case invalidTree
 }
 
 enum LayoutMemoryRestorePlanner {

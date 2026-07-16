@@ -21,6 +21,7 @@ struct LayoutMemoryWindowMatch: Equatable, Sendable {
 
 struct LayoutMemoryAmbiguousWindow: Equatable, Sendable {
     let reference: LayoutMemoryWindowReference
+    // periphery:ignore - Included in auditable matching diagnostics
     let candidateWindowIds: [UInt32]
 }
 

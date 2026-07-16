@@ -61,6 +61,7 @@ struct ResolvedFloatingWindowPlan: Equatable, Sendable {
     let windowId: UInt32
     let workspace: String
     let geometry: LayoutMemoryFloatingGeometry?
+    // periphery:ignore - Reserved for deterministic floating z-order restoration
     let zIndex: Int?
 }
 
@@ -76,6 +77,7 @@ struct ResolvedFocusPlan: Equatable, Sendable {
 struct ResolvedLayoutMemoryPlan: Equatable, Sendable {
     let expectedMonitorSignature: String
     let expectedLayoutGeneration: UInt64
+    // periphery:ignore - Included in dry-run and audit plans
     let sourceFingerprint: String
     let workspaces: [ResolvedWorkspacePlan]
     let floatingWindows: [ResolvedFloatingWindowPlan]

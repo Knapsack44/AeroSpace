@@ -24,12 +24,17 @@ struct LayoutMemoryWindowSnapshot: Codable, Equatable, Sendable {
     let reference: LayoutMemoryWindowReference
     let workspace: String
     let state: LayoutMemoryWindowState
+    // periphery:ignore - Serialized for future-safe restore compatibility
     let isAeroSpaceFullscreen: Bool
+    // periphery:ignore - Serialized for future-safe restore compatibility
     let noOuterGapsInFullscreen: Bool
     let floatingGeometry: LayoutMemoryFloatingGeometry?
     let floatingZIndex: Int?
+    // periphery:ignore - Serialized to preserve non-mutating visibility state
     let isHidden: Bool
+    // periphery:ignore - Serialized to preserve non-mutating visibility state
     let isMinimized: Bool
+    // periphery:ignore - Serialized to preserve non-mutating visibility state
     let isNativeFullscreen: Bool
 }
 

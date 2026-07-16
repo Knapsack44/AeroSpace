@@ -25,7 +25,7 @@ struct LayoutMemoryExporter {
         for window in allWindows {
             let title = try await window.getTitle(.nonCancellable)
             titles[window.windowId] = title
-            if !isTemporary(window: window, title: title) {
+            if !isTemporary(title: title) {
                 references[window.windowId] = .init(
                     windowId: window.windowId,
                     bundleId: window.app.rawAppBundleId ?? "",
@@ -83,7 +83,7 @@ struct LayoutMemoryExporter {
     }
 
     @MainActor
-    private func isTemporary(window: Window, title: String) -> Bool {
+    private func isTemporary(title: String) -> Bool {
         configuration.temporaryWindowTitleRegexSubstrings.contains { pattern in
             title.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
         }

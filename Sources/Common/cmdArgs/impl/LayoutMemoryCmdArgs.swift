@@ -1,11 +1,5 @@
 import Foundation
 
-private let layoutMemoryHelp = """
-    USAGE: layout-memory <action> [options]
-
-    Experimental AeroSpace Custom layout snapshot and restore commands.
-    """
-
 public enum LayoutMemoryAction: Equatable, Sendable {
     case export(output: String)
     case restore(input: String?, version: UUID?, dryRun: Bool, json: Bool)
@@ -28,7 +22,7 @@ public struct LayoutMemoryCmdArgs: CmdArgs {
     /*conforms*/ public var commonState: CmdArgsCommonState
     public static let parser: CmdParser<Self> = .init(
         kind: .layoutMemory,
-        help: layoutMemoryHelp,
+        help: layout_memory_help_generated,
         flags: [
             "--json": trueBoolFlag(\.json),
             "--dry-run": trueBoolFlag(\.dryRun),
