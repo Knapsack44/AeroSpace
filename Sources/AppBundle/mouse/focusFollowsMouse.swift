@@ -60,7 +60,7 @@ import AppKit
                     window = foundWindow ?? location.findWindowRecursively(in: workspace.rootTilingContainer, virtual: false, fullscreenCoversAll: true)
                 case .noWindow:
                     window = nil
-                }
+            }
             if let window {
                 try await runLightSession(.focusFollowsMouse, token) {
                     _ = window.focusWindow()

@@ -131,8 +131,8 @@ func parseFocusCmdArgs(_ args: StrArrSlice) -> ParsedCmd<FocusCmdArgs> {
                 return true
             }
             return switch $0.target {
-                case .direction?: true
-                case .dfsIndex?, .dfsRelative?, .windowId?, .containerRelative?, nil: false
+                case .direction: true
+                case .dfsIndex, .dfsRelative, .windowId, .containerRelative, nil: false
             }
         }
         .filter("(container-next|container-prev) only supports --ignore-floating") {
