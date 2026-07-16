@@ -30,6 +30,7 @@ import AppKit
         focusFollowsTask?.cancel()
         focusFollowsTask = Task.startUnstructured { @MainActor in
             guard let token: RunSessionGuard = .isServerEnabled else { return }
+            if LayoutMemoryRuntime.shared.suppressesCallbacks { return }
             try checkCancellation()
             if delayMs > 0 {
                 try await Task.sleep(for: .milliseconds(delayMs))

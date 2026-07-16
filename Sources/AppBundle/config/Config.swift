@@ -51,6 +51,7 @@ struct Config: ConvenienceMutable {
     var keyMapping = KeyMapping()
     var execConfig: ExecConfig = ExecConfig()
     var focusFollowsMouse: FocusFollowsMouse = FocusFollowsMouse()
+    var customLayoutMemory = CustomLayoutMemoryConfig()
 
     var onFocusChanged: Shell<any Command> = .empty
     // var onFocusedWorkspaceChanged: [any Command] = []
@@ -66,6 +67,41 @@ struct Config: ConvenienceMutable {
 struct FocusFollowsMouse: ConvenienceMutable {
     var enabled: Bool = false
     var delayMs: Int = 0
+}
+
+enum CustomLayoutMemoryMode: String, Equatable, Sendable {
+    case shadow
+    case manual
+    case automatic
+}
+
+struct CustomLayoutMemoryConfig: ConvenienceMutable, Equatable, Sendable {
+    var enabled = false
+    var mode: CustomLayoutMemoryMode = .shadow
+    var stabilityDelayMs = 5000
+    var topologySampleIntervalMs = 2000
+    var snapshotIntervalSeconds = 300
+    var postTransitionSaveDelaySeconds = 60
+    var layoutIdleSeconds = 30
+    var historyLimit = 5
+    var loginRestoreWindowSeconds = 90
+    var failureCooldownSeconds = 600
+    var nativeFullscreenDeferralSeconds = 300
+    var playSoundAfterAutoRestore = true
+    var successSound = "/System/Library/Sounds/Glass.aiff"
+    var failureSound = "/System/Library/Sounds/Basso.aiff"
+    var pauseSound = "/System/Library/Sounds/Pop.aiff"
+    var resumeSound = "/System/Library/Sounds/Ping.aiff"
+    var temporaryWindowTitleRegexSubstrings: [String] = []
+    var excludedWorkspaces = ["NULL-WORKSPACE", "WS2TMP", "WS3TMP", "WSRESTORETMP"]
+}
+
+func isCustomLayoutMemoryRuntimeEnabled(
+    appId: String,
+    isReadOnly: Bool,
+    config: CustomLayoutMemoryConfig,
+) -> Bool {
+    appId == customAeroSpaceAppId && !isReadOnly && config.enabled
 }
 
 enum ConfigVersion: Int, Comparable, CaseIterable, Sendable, CustomStringConvertible {

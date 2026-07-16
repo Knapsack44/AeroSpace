@@ -242,6 +242,10 @@ private func unbindAndGetBindingDataForNewTilingWindow(_ workspace: Workspace, w
 
 @MainActor
 func tryOnWindowDetected(_ window: Window) async {
+    if LayoutMemoryRuntime.shared.suppressesCallbacks {
+        LayoutMemoryRuntime.shared.queueDetectedWindow(window.windowId)
+        return
+    }
     switch window.windowParentCases {
         case .tilingContainer, .floatingWindowsContainer, .macosMinimizedWindowsContainer,
              .macosFullscreenWindowsContainer, .macosHiddenAppsWindowsContainer:
