@@ -48,3 +48,36 @@ targets:
       properties:
         # Accessibility API doesn't work in sandboxed apps
         com.apple.security.app-sandbox: false
+
+  AeroSpaceCustom:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - "../Sources/AeroSpaceApp"
+      - "../resources"
+      - "../docs/config-examples/default-config.toml"
+    dependencies:
+      - package: AeroSpacePackage
+        product: AppBundle
+    settings:
+      base:
+        SWIFT_VERSION: 6.2
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: ${XCODEGEN_AEROSPACE_VERSION}
+        INFOPLIST_KEY_LSUIElement: YES
+        CODE_SIGN_IDENTITY: ${XCODEGEN_AEROSPACE_CODE_SIGN_IDENTITY}
+      configs:
+        Debug:
+          PRODUCT_NAME: AeroSpace Custom-Debug
+          PRODUCT_BUNDLE_IDENTIFIER: bobko.aerospace.custom.debug
+        Release:
+          PRODUCT_NAME: AeroSpace Custom
+          PRODUCT_BUNDLE_IDENTIFIER: bobko.aerospace.custom
+          SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+          GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    entitlements:
+      path: ../resources/AeroSpace.entitlements
+      properties:
+        # Accessibility API doesn't work in sandboxed apps
+        com.apple.security.app-sandbox: false
