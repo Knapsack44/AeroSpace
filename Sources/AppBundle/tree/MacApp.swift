@@ -420,13 +420,21 @@ private func getAxRect(window: AXUIElement, job: RunLoopJob) throws -> Rect? {
 }
 
 private func setFrame(_ window: AXUIElement, _ topLeft: CGPoint?, _ size: CGSize?, _ job: RunLoopJob) throws {
+    let decision = AxFrameUpdateDecision(
+        currentTopLeft: topLeft == nil ? nil : window.get(Ax.topLeftCornerAttr),
+        targetTopLeft: topLeft,
+        currentSize: size == nil ? nil : window.get(Ax.sizeAttr),
+        targetSize: size,
+    )
+    if !decision.hasUpdates { return }
+
     // Set size and then the position. The order is important https://github.com/nikitabobko/AeroSpace/issues/143
     //                                                        https://github.com/nikitabobko/AeroSpace/issues/335
-    if let size { window.set(Ax.sizeAttr, size) }
+    if let size, decision.shouldUpdateSize { window.set(Ax.sizeAttr, size) }
     try job.checkCancellation()
-    if let topLeft { window.set(Ax.topLeftCornerAttr, topLeft) } else { return }
+    if let topLeft, decision.shouldUpdateTopLeft { window.set(Ax.topLeftCornerAttr, topLeft) } else { return }
     try job.checkCancellation()
-    if let size { window.set(Ax.sizeAttr, size) }
+    if let size, decision.shouldUpdateSize { window.set(Ax.sizeAttr, size) }
 }
 
 // Some undocumented magic
