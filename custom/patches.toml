@@ -56,3 +56,11 @@ status = 'custom-only'
 upstream-reference = ''
 tests = ['LayoutMemory']
 retire-when = 'Retire only if upstream supplies equivalent versioned monitor-profile snapshots, conservative matching, transactional restore, and manual controls.'
+
+[[patch]]
+id = 'restore-focus-after-transient-dialog'
+commit-subject = 'Restore focus after transient dialogs close'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['FocusAfterWindowRemovalTest']
+retire-when = 'Upstream restores the exact previous live workspace window after a focused transient dialog closes.'
