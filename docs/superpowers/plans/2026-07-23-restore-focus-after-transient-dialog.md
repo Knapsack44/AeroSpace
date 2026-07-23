@@ -305,7 +305,13 @@ release_tag_for_upstream() {
     base="custom-$normalized"
     latest="$(
         git -C "$SOURCE_REPO" tag --list "$base.*" |
-            sed -n "s/^$(printf '%s' "$base" | sed 's/[][\\.^$*]/\\&/g')\\.\\([0-9][0-9]*\\)$/\\1/p" |
+            while IFS= read -r tag; do
+                suffix="${tag#"$base."}"
+                case "$suffix" in
+                    ''|*[!0-9]*) continue ;;
+                esac
+                printf '%s\n' "$suffix"
+            done |
             sort -n |
             tail -1
     )"
