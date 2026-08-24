@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 manifest="${AEROSPACE_CUSTOM_PATCH_MANIFEST:-custom/patches.toml}"
+regression_index="${AEROSPACE_CUSTOM_REGRESSION_INDEX:?Set AEROSPACE_CUSTOM_REGRESSION_INDEX}"
 run_tests=1
 if test "${1:-}" = "--skip-tests"; then
     run_tests=0
@@ -23,12 +24,14 @@ test -n "$base" || {
     exit 1
 }
 git rev-parse --verify "$base^{commit}" >/dev/null
+script/verify-regression-references.sh "$manifest" "$regression_index"
 
 subjects_file="$(mktemp)"
 expected_file="$(mktemp)"
 tests_file="$(mktemp)"
+unmapped_file="$(mktemp)"
 cleanup() {
-    rm -f "$subjects_file" "$expected_file" "$tests_file"
+    rm -f "$subjects_file" "$expected_file" "$tests_file" "$unmapped_file"
 }
 trap cleanup EXIT INT TERM
 
@@ -59,6 +62,36 @@ while IFS= read -r expected; do
     }
     previous_line="$line"
 done < "$expected_file"
+
+commit_is_productive() {
+    local commit="$1"
+    local path
+    while IFS= read -r path; do
+        case "$path" in
+            docs/* | dev-docs/* | custom/*) ;;
+            script/verify-custom-patch-stack.sh) ;;
+            script/verify-regression-references.sh) ;;
+            Sources/AppBundleTests/config/CustomPatchManifestTest.swift) ;;
+            *) return 0 ;;
+        esac
+    done < <(git diff-tree --no-commit-id --name-only -r "$commit")
+    return 1
+}
+
+while IFS=$'\t' read -r commit subject; do
+    if grep -Fqx "$subject" "$expected_file"; then
+        continue
+    fi
+    if commit_is_productive "$commit"; then
+        printf '%s\t%s\n' "$commit" "$subject" >> "$unmapped_file"
+    fi
+done < <(git log --reverse --format='%H%x09%s' "$base..HEAD")
+
+if test -s "$unmapped_file"; then
+    printf 'Unmapped productive commit(s):\n' >&2
+    sed 's/^/  /' "$unmapped_file" >&2
+    exit 1
+fi
 
 if test "$run_tests" = 1; then
     sed -n "s/^tests = \\[\\(.*\\)\\]$/\\1/p" "$manifest" |

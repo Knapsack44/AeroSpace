@@ -7,6 +7,7 @@ commit-subject = 'Add container-local focus cycling'
 status = 'submitted'
 upstream-reference = 'https://github.com/nikitabobko/AeroSpace/pull/2048'
 tests = ['FocusCommandTest']
+regressions = ['ASR-0001']
 retire-when = 'Upstream provides equivalent container-next/container-prev cycling with ancestor fallback and all retained tests pass.'
 
 [[patch]]
@@ -15,6 +16,7 @@ commit-subject = 'Add side-by-side AeroSpace Custom build'
 status = 'custom-only'
 upstream-reference = ''
 tests = ['AppMetadataTest']
+feature-rationale = 'Provides a separately named app bundle and Accessibility identity that can coexist with vanilla AeroSpace.'
 retire-when = 'Never retire automatically; this defines the Custom product identity.'
 
 [[patch]]
@@ -23,6 +25,7 @@ commit-subject = 'Route CLI to running AeroSpace Custom'
 status = 'custom-only'
 upstream-reference = ''
 tests = ['AppMetadataTest']
+feature-rationale = 'Routes CLI commands to the running Custom app while preserving vanilla behavior when it is absent.'
 retire-when = 'Retire only if upstream supports equivalent runtime target selection without changing vanilla defaults.'
 
 [[patch]]
@@ -31,6 +34,7 @@ commit-subject = 'Throttle failed app registration retries'
 status = 'submitted'
 upstream-reference = 'https://github.com/nikitabobko/AeroSpace/discussions/2084'
 tests = ['FailedRegistrationBackoffTest']
+regressions = ['ASR-0008']
 retire-when = 'Upstream prevents tight failed AX registration retries and the CPU regression test passes.'
 
 [[patch]]
@@ -39,6 +43,7 @@ commit-subject = 'Avoid redundant accessibility frame writes'
 status = 'custom-only'
 upstream-reference = ''
 tests = ['AxFrameUpdateDecisionTest']
+regressions = ['ASR-0009']
 retire-when = 'Upstream avoids equivalent no-op AX size and position writes and the retained regression test passes.'
 
 [[patch]]
@@ -47,6 +52,7 @@ commit-subject = 'Stabilize delayed focus follows mouse'
 status = 'custom-only'
 upstream-reference = ''
 tests = ['ConfigTest']
+regressions = ['ASR-0010']
 retire-when = 'Upstream provides the same delayed overlapping-window behavior and retained tests pass.'
 
 [[patch]]
@@ -55,6 +61,7 @@ commit-subject = 'Add native monitor-aware layout memory'
 status = 'custom-only'
 upstream-reference = ''
 tests = ['LayoutMemory']
+regressions = ['ASR-0011']
 retire-when = 'Retire only if upstream supplies equivalent versioned monitor-profile snapshots, conservative matching, transactional restore, and manual controls.'
 
 [[patch]]
@@ -63,4 +70,5 @@ commit-subject = 'Restore focus after transient dialogs close'
 status = 'custom-only'
 upstream-reference = ''
 tests = ['FocusAfterWindowRemovalTest']
+regressions = ['ASR-0006']
 retire-when = 'Upstream restores the exact previous live workspace window after a focused transient dialog closes.'
