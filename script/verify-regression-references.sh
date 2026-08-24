@@ -24,6 +24,22 @@ FEATURE_CLASSES_BY_PATCH_ID = {
     "custom-cli-routing": "runtime-target-selection",
 }
 
+FEATURE_RATIONALE_VOCABULARY = {
+    "product-identity": (
+        {"app", "bundle"},
+        {"accessibility", "identity", "named"},
+        {"coexist", "distinct", "separate", "separately"},
+    ),
+    "runtime-target-selection": (
+        {"route", "routes", "routing"},
+        {"cli", "command", "commands"},
+        {"custom", "vanilla"},
+    ),
+}
+
+MIN_RATIONALE_WORDS = 7
+MIN_DISTINCT_RATIONALE_WORDS = 6
+
 
 def fail(message):
     raise VerificationError(message)
@@ -97,8 +113,20 @@ def validate_feature_contract(patch, patch_id):
         fail(f"patch {patch_id} is not registered as a feature-only patch")
     if feature_class != expected_feature_class:
         fail(f"patch {patch_id} feature-class must be {expected_feature_class}")
-    rationale = patch.get("feature-rationale")
-    require_string(rationale, f"patch {patch_id} feature-rationale")
+    rationale = require_string(patch.get("feature-rationale"), f"patch {patch_id} feature-rationale")
+    words = re.findall(r"[a-z]+(?:-[a-z]+)*", rationale.casefold())
+    distinct_words = set(words)
+    if len(words) < MIN_RATIONALE_WORDS or len(distinct_words) < MIN_DISTINCT_RATIONALE_WORDS:
+        fail(
+            f"patch {patch_id} feature-rationale must contain at least "
+            f"{MIN_RATIONALE_WORDS} words and {MIN_DISTINCT_RATIONALE_WORDS} distinct words"
+        )
+    vocabulary = FEATURE_RATIONALE_VOCABULARY[feature_class]
+    if any(distinct_words.isdisjoint(required_terms) for required_terms in vocabulary):
+        fail(
+            f"patch {patch_id} feature-rationale must describe {feature_class} "
+            "using its required semantic vocabulary"
+        )
 
 
 def validate_patch(patch, cases_by_id):

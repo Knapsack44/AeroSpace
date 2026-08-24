@@ -40,13 +40,13 @@ final class CustomPatchManifestTest: XCTestCase {
             id = 'custom-app-bundle'
             commit-subject = 'First patch'
             feature-class = 'product-identity'
-            feature-rationale = 'Provides a distinct user-visible product identity.'
+            feature-rationale = 'Provides a separately named app bundle and Accessibility identity.'
 
             [[patch]]
             id = 'custom-app-bundle'
             commit-subject = 'Second patch'
             feature-class = 'product-identity'
-            feature-rationale = 'Provides a distinct user-visible product identity.'
+            feature-rationale = 'Provides a separately named app bundle and Accessibility identity.'
             """
         let result = try verify(manifest: duplicatePatch, index: emptyIndex)
 
@@ -102,6 +102,34 @@ final class CustomPatchManifestTest: XCTestCase {
         )
 
         XCTAssertEqual(result.status, 0, result.stderr)
+    }
+
+    func testRejectsFillerRationaleForKnownFeaturePatch() throws {
+        let result = try verify(
+            manifest: manifest(
+                patchId: "custom-app-bundle",
+                featureClass: "product-identity",
+                featureRationale: "placeholder placeholder placeholder placeholder placeholder placeholder placeholder",
+            ),
+            index: emptyIndex,
+        )
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.stderr.contains("must contain at least 7 words and 6 distinct words"))
+    }
+
+    func testRejectsUnrelatedRationaleForKnownFeaturePatch() throws {
+        let result = try verify(
+            manifest: manifest(
+                patchId: "custom-cli-routing",
+                featureClass: "runtime-target-selection",
+                featureRationale: "Documents colorful gardening recipes for weekend visitors and seasonal flowers.",
+            ),
+            index: emptyIndex,
+        )
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.stderr.contains("must describe runtime-target-selection"))
     }
 
     func testPatchStackAllowsUnmappedDocumentationOnlyCommit() throws {
