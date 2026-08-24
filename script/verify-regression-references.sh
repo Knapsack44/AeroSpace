@@ -19,6 +19,12 @@ class VerificationError(RuntimeError):
     pass
 
 
+FEATURE_CLASSES_BY_PATCH_ID = {
+    "custom-app-bundle": "product-identity",
+    "custom-cli-routing": "runtime-target-selection",
+}
+
+
 def fail(message):
     raise VerificationError(message)
 
@@ -81,11 +87,18 @@ def validate_regressions(patch, patch_id, cases_by_id):
         require_patch_back_reference(cases_by_id[case_id], case_id, patch_id)
 
 
-def validate_feature_rationale(patch, patch_id):
+def validate_feature_contract(patch, patch_id):
+    feature_class = require_string(patch.get("feature-class"), f"patch {patch_id} feature-class")
+    known_feature_classes = set(FEATURE_CLASSES_BY_PATCH_ID.values())
+    if feature_class not in known_feature_classes:
+        fail(f"patch {patch_id} has unknown feature-class {feature_class}")
+    expected_feature_class = FEATURE_CLASSES_BY_PATCH_ID.get(patch_id)
+    if expected_feature_class is None:
+        fail(f"patch {patch_id} is not registered as a feature-only patch")
+    if feature_class != expected_feature_class:
+        fail(f"patch {patch_id} feature-class must be {expected_feature_class}")
     rationale = patch.get("feature-rationale")
     require_string(rationale, f"patch {patch_id} feature-rationale")
-    if rationale.strip().lower() == "custom-only" or len(rationale.strip()) < 20:
-        fail(f"patch {patch_id} feature-rationale must explain user-visible identity or behavior")
 
 
 def validate_patch(patch, cases_by_id):
@@ -94,13 +107,22 @@ def validate_patch(patch, cases_by_id):
     patch_id = require_string(patch.get("id"), "patch id")
     require_string(patch.get("commit-subject"), f"patch {patch_id} commit-subject")
     has_regressions = "regressions" in patch
+    has_feature_class = "feature-class" in patch
     has_rationale = "feature-rationale" in patch
-    if has_regressions == has_rationale:
-        fail(f"patch {patch_id} requires regressions or feature-rationale, but not both")
     if has_regressions:
+        if has_feature_class or has_rationale:
+            fail(
+                f"patch {patch_id} requires regressions or a feature-class with "
+                "feature-rationale, but not both"
+            )
         validate_regressions(patch, patch_id, cases_by_id)
     else:
-        validate_feature_rationale(patch, patch_id)
+        if not has_feature_class or not has_rationale:
+            fail(
+                f"patch {patch_id} requires regressions or a feature-class with "
+                "feature-rationale"
+            )
+        validate_feature_contract(patch, patch_id)
     return patch_id
 
 

@@ -28,7 +28,7 @@ final class CustomPatchManifestTest: XCTestCase {
         let result = try verify(manifest: manifest(), index: validIndex)
 
         XCTAssertNotEqual(result.status, 0)
-        XCTAssertTrue(result.stderr.contains("requires regressions or feature-rationale"))
+        XCTAssertTrue(result.stderr.contains("requires regressions or a feature-class"))
     }
 
     func testRejectsDuplicatePatchIds() throws {
@@ -37,26 +37,69 @@ final class CustomPatchManifestTest: XCTestCase {
             upstream-base = 'fixture-base'
 
             [[patch]]
-            id = 'container-focus'
+            id = 'custom-app-bundle'
             commit-subject = 'First patch'
-            regressions = ['ASR-0001']
+            feature-class = 'product-identity'
+            feature-rationale = 'Provides a distinct user-visible product identity.'
 
             [[patch]]
-            id = 'container-focus'
+            id = 'custom-app-bundle'
             commit-subject = 'Second patch'
+            feature-class = 'product-identity'
             feature-rationale = 'Provides a distinct user-visible product identity.'
             """
-        let result = try verify(manifest: duplicatePatch, index: validIndex)
+        let result = try verify(manifest: duplicatePatch, index: emptyIndex)
 
         XCTAssertNotEqual(result.status, 0)
-        XCTAssertTrue(result.stderr.contains("duplicate patch ID container-focus"))
+        XCTAssertTrue(result.stderr.contains("duplicate patch ID custom-app-bundle"))
     }
 
-    func testAcceptsFeatureOnlyPatchWithUserVisibleRationale() throws {
+    func testRejectsFillerFeatureClassAndRationale() throws {
         let featureManifest = manifest(
-            featureRationale: "Provides a distinct user-visible product identity.",
+            featureClass: "aaaaaaaaaaaaaaaaaaaa",
+            featureRationale: "aaaaaaaaaaaaaaaaaaaa",
         )
         let result = try verify(manifest: featureManifest, index: emptyIndex)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.stderr.contains("unknown feature-class"))
+    }
+
+    func testRejectsKnownFeatureClassOnUnregisteredPatch() throws {
+        let result = try verify(
+            manifest: manifest(
+                featureClass: "product-identity",
+                featureRationale: "aaaaaaaaaaaaaaaaaaaa",
+            ),
+            index: emptyIndex,
+        )
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.stderr.contains("is not registered as a feature-only patch"))
+    }
+
+    func testAcceptsCurrentCustomAppBundleFeatureContract() throws {
+        let result = try verify(
+            manifest: manifest(
+                patchId: "custom-app-bundle",
+                featureClass: "product-identity",
+                featureRationale: "Provides a separately named app bundle and Accessibility identity.",
+            ),
+            index: emptyIndex,
+        )
+
+        XCTAssertEqual(result.status, 0, result.stderr)
+    }
+
+    func testAcceptsCurrentCustomCliRoutingFeatureContract() throws {
+        let result = try verify(
+            manifest: manifest(
+                patchId: "custom-cli-routing",
+                featureClass: "runtime-target-selection",
+                featureRationale: "Routes commands to the running Custom app without changing vanilla defaults.",
+            ),
+            index: emptyIndex,
+        )
 
         XCTAssertEqual(result.status, 0, result.stderr)
     }
@@ -93,6 +136,23 @@ final class CustomPatchManifestTest: XCTestCase {
         XCTAssertTrue(result.stderr.contains("Add unmapped product behavior"))
     }
 
+    func testPatchStackRejectsUnmappedFileUnderCustomDirectory() throws {
+        let fixture = try makePatchStackFixture()
+        defer { try? FileManager.default.removeItem(at: fixture) }
+        try commitFile(
+            in: fixture,
+            path: "custom/runtime-policy.json",
+            contents: "{\"enabled\":true}\n",
+            subject: "Add unmapped Custom runtime policy",
+        )
+
+        let result = try verifyPatchStack(in: fixture)
+
+        XCTAssertNotEqual(result.status, 0)
+        XCTAssertTrue(result.stderr.contains("Unmapped productive commit"))
+        XCTAssertTrue(result.stderr.contains("Add unmapped Custom runtime policy"))
+    }
+
     private var emptyIndex: String {
         """
         {"cases": [], "schema-version": 1}
@@ -100,7 +160,9 @@ final class CustomPatchManifestTest: XCTestCase {
     }
 
     private func manifest(
+        patchId: String = "container-focus",
         regressions: [String]? = nil,
+        featureClass: String? = nil,
         featureRationale: String? = nil,
     ) -> String {
         var lines = [
@@ -108,12 +170,15 @@ final class CustomPatchManifestTest: XCTestCase {
             "upstream-base = 'fixture-base'",
             "",
             "[[patch]]",
-            "id = 'container-focus'",
+            "id = '\(patchId)'",
             "commit-subject = 'Container focus patch'",
         ]
         if let regressions {
             let values = regressions.map { "'\($0)'" }.joined(separator: ", ")
             lines.append("regressions = [\(values)]")
+        }
+        if let featureClass {
+            lines.append("feature-class = '\(featureClass)'")
         }
         if let featureRationale {
             lines.append("feature-rationale = '\(featureRationale)'")

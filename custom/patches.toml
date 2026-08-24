@@ -16,6 +16,7 @@ commit-subject = 'Add side-by-side AeroSpace Custom build'
 status = 'custom-only'
 upstream-reference = ''
 tests = ['AppMetadataTest']
+feature-class = 'product-identity'
 feature-rationale = 'Provides a separately named app bundle and Accessibility identity that can coexist with vanilla AeroSpace.'
 retire-when = 'Never retire automatically; this defines the Custom product identity.'
 
@@ -25,6 +26,7 @@ commit-subject = 'Route CLI to running AeroSpace Custom'
 status = 'custom-only'
 upstream-reference = ''
 tests = ['AppMetadataTest']
+feature-class = 'runtime-target-selection'
 feature-rationale = 'Routes CLI commands to the running Custom app while preserving vanilla behavior when it is absent.'
 retire-when = 'Retire only if upstream supports equivalent runtime target selection without changing vanilla defaults.'
 

@@ -68,7 +68,8 @@ commit_is_productive() {
     local path
     while IFS= read -r path; do
         case "$path" in
-            docs/* | dev-docs/* | custom/*) ;;
+            docs/* | dev-docs/*) ;;
+            custom/README.md | custom/patches.toml) ;;
             script/verify-custom-patch-stack.sh) ;;
             script/verify-regression-references.sh) ;;
             Sources/AppBundleTests/config/CustomPatchManifestTest.swift) ;;
