@@ -101,3 +101,12 @@ upstream-reference = ''
 tests = ['AccessibilityAttributeTest', 'NativeFocusRetryTest', 'NativeFocusZOrderTest']
 regressions = ['ASR-0004', 'ASR-0005']
 retire-when = 'Upstream focuses one native window without raising same-app windows on other visible workspaces and retained tests pass.'
+
+[[patch]]
+id = 'bounded-ax-title-reads'
+commit-subject = 'Bound accessibility window title reads'
+status = 'custom-only'
+upstream-reference = 'https://github.com/nikitabobko/AeroSpace/issues/1257'
+tests = ['AsyncTimeoutTest']
+regressions = ['ASR-0007']
+retire-when = 'Upstream bounds AX title reads without blocking the server and all retained tests pass.'

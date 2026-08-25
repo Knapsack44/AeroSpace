@@ -21,6 +21,7 @@ final class MacApp: AbstractApp {
     private var thread: Thread?
     private var setFrameJobs: [UInt32: RunLoopJob] = [:]
     @MainActor private static var focusJob: RunLoopJob? = nil
+    private static let axTitleTimeout: Duration = .milliseconds(250)
 
     /*conforms*/ var name: String? { nsApp.localizedName }
     /*conforms*/ var execPath: String? { nsApp.executableURL?.path }
@@ -296,9 +297,16 @@ final class MacApp: AbstractApp {
     }
 
     func getAxTitle(_ windowId: UInt32, _ cm: CancellationMode) async throws -> String? {
-        try await withWindow(windowId, cm) { window, job in
-            window.get(Ax.titleAttr)
+        try checkCancellation(cm)
+        let title = try await firstResult(before: Self.axTitleTimeout) { continuation in
+            let job = withWindowAsync(windowId, .cancellable) { window, job in
+                continuation.yield(window.get(Ax.titleAttr))
+                continuation.finish()
+            }
+            return { job.cancel() }
         }
+        try checkCancellation(cm)
+        return title.flattenOptional()
     }
 
     func isMacosNativeFullscreen(_ windowId: UInt32, _ cm: CancellationMode) async throws -> Bool? {
