@@ -57,6 +57,8 @@ let focus_help_generated = """
                  (dfs-next|dfs-prev)
        OR: focus [-h|--help] [--ignore-floating]
                  (container-next|container-prev)
+       OR: focus [-h|--help] [--ignore-floating]
+                 (container-mru-next|container-mru-prev)
        OR: focus [-h|--help] --window-id <window-id>
        OR: focus [-h|--help] --dfs-index <dfs-index>
     """

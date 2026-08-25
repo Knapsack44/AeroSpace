@@ -18,6 +18,8 @@ aerospace focus [-h|--help] [--ignore-floating] [--wrap-around]
                 (dfs-next|dfs-prev)
 aerospace focus [-h|--help] [--ignore-floating]
                 (container-next|container-prev)
+aerospace focus [-h|--help] [--ignore-floating]
+                (container-mru-next|container-mru-prev)
 aerospace focus [-h|--help] --window-id <window-id>
 aerospace focus [-h|--help] --dfs-index <dfs-index>
 
@@ -39,6 +41,10 @@ This behavior can be disabled with `--ignore-floating` flag.
 If the direct parent container contains only one window, AeroSpace climbs upward until it finds a wider ancestor, including the workspace root if needed, and wraps within that ancestor.
 This is useful for accordion groups and nested single-child containers.
 Boundary flags like `--boundaries`, `--boundaries-action`, and `--wrap-around` are not supported for container-local cycling.
+
+`focus container-mru-next|container-mru-prev` uses the same container boundary but cycles through a short-lived snapshot ordered by focus recency.
+The snapshot is reused for up to 750 milliseconds, so repeated invocations can visit every window without the order changing after each focus update.
+`container-mru-prev` starts with the least recently focused window when a new cycle begins.
 
 // =========================================================== Options
 include::util/conditional-options-header.adoc[]
@@ -92,6 +98,12 @@ In this mode, `--boundaries` must be `workspace` (the default) and `--boundaries
 Set focus to the next or previous window inside the nearest ancestor that can actually cycle.
 If the focused window lives inside a single-window container, the command walks upward until it finds a wider ancestor, including the workspace root if needed.
 The command wraps within that ancestor and accepts `--ignore-floating`.
+
+(container-mru-next|container-mru-prev)::
+Set focus using a focus-recency snapshot inside the nearest ancestor that can actually cycle.
+Repeated invocations reuse the snapshot for up to 750 milliseconds and wrap within it.
+An external focus change, a different ancestor, or a changed window set starts a new cycle.
+The command accepts `--ignore-floating`.
 
 // end::body[]
 

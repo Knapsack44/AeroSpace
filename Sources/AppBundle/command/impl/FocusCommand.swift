@@ -67,6 +67,11 @@ struct FocusCommand: Command {
                     return .fail(io.err(noWindowIsFocused))
                 }
                 return .from(bool: focusInAncestorContainer(window, nextPrev: nextPrev))
+            case .containerMruRelative(let nextPrev):
+                guard let window = target.windowOrNil else {
+                    return .fail(io.err(noWindowIsFocused))
+                }
+                return .from(bool: focusInAncestorContainerMru(window, nextPrev: nextPrev, now: .now))
         }
     }
 }
@@ -85,6 +90,104 @@ struct FocusCommand: Command {
     }
     let wrappedIndex = (targetIndex + windows.count) % windows.count
     return windows[wrappedIndex].focusWindow()
+}
+
+private let containerMruFocusCycleTimeout = Duration.milliseconds(750)
+
+@MainActor private var containerMruFocusCycle: ContainerMruFocusCycle?
+
+private struct ContainerMruFocusCycle {
+    let ancestor: TreeNode
+    let windowIds: [UInt32]
+    var currentIndex: Int
+    var lastInvocation: ContinuousClock.Instant
+    var focusSequence: UInt64
+
+    func isValid(
+        ancestor currentAncestor: TreeNode,
+        windowIds currentWindowIds: [UInt32],
+        focusedWindowId: UInt32,
+        now: ContinuousClock.Instant,
+        focusSequence currentFocusSequence: UInt64,
+    ) -> Bool {
+        ancestor === currentAncestor
+            && windowIds.count == currentWindowIds.count
+            && Set(windowIds) == Set(currentWindowIds)
+            && windowIds.getOrNil(atIndex: currentIndex) == focusedWindowId
+            && focusSequence == currentFocusSequence
+            && lastInvocation.duration(to: now) <= containerMruFocusCycleTimeout
+    }
+}
+
+@MainActor
+func resetContainerMruFocusCycle() {
+    containerMruFocusCycle = nil
+}
+
+@MainActor
+func focusInAncestorContainerMru(
+    _ window: Window,
+    nextPrev: ContainerMruFocusNextPrev,
+    now: ContinuousClock.Instant,
+) -> Bool {
+    guard let ancestor = window.parentsWithSelf.first(where: { $0.allLeafWindowsRecursive.count > 1 }) else {
+        resetContainerMruFocusCycle()
+        return true
+    }
+
+    let windows = ancestor.allLeafWindowsRecursive
+    let windowIds = windows.map(\.windowId)
+    var cycle: ContainerMruFocusCycle = if let existingCycle = containerMruFocusCycle, existingCycle.isValid(
+        ancestor: ancestor,
+        windowIds: windowIds,
+        focusedWindowId: window.windowId,
+        now: now,
+        focusSequence: focusSequence,
+    ) {
+        existingCycle
+    } else {
+        makeContainerMruFocusCycle(ancestor: ancestor, windows: windows, current: window, now: now)
+    }
+
+    let offset = switch nextPrev {
+        case .containerMruNext: 1
+        case .containerMruPrev: -1
+    }
+    cycle.currentIndex = (cycle.currentIndex + offset + cycle.windowIds.count) % cycle.windowIds.count
+    guard let target = windows.first(where: { $0.windowId == cycle.windowIds[cycle.currentIndex] }) else {
+        resetContainerMruFocusCycle()
+        return true
+    }
+    guard target.focusWindow() else {
+        resetContainerMruFocusCycle()
+        return false
+    }
+
+    cycle.lastInvocation = now
+    cycle.focusSequence = focusSequence
+    containerMruFocusCycle = cycle
+    return true
+}
+
+@MainActor
+private func makeContainerMruFocusCycle(
+    ancestor: TreeNode,
+    windows: [Window],
+    current: Window,
+    now: ContinuousClock.Instant,
+) -> ContainerMruFocusCycle {
+    let windowIds = windows.enumerated().sorted {
+        $0.element.focusSequence == $1.element.focusSequence
+            ? $0.offset < $1.offset
+            : $0.element.focusSequence > $1.element.focusSequence
+    }.map(\.element.windowId)
+    return ContainerMruFocusCycle(
+        ancestor: ancestor,
+        windowIds: windowIds,
+        currentIndex: windowIds.firstIndex(of: current.windowId).orDie(),
+        lastInvocation: now,
+        focusSequence: focusSequence,
+    )
 }
 
 @MainActor private func hitWorkspaceBoundaries(

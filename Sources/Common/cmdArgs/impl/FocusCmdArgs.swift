@@ -64,6 +64,7 @@ public enum FocusCmdTarget: Equatable, Sendable {
     case dfsIndex(UInt32)
     case dfsRelative(DfsNextPrev)
     case containerRelative(ContainerFocusNextPrev)
+    case containerMruRelative(ContainerMruFocusNextPrev)
 
     var isDfsRelative: Bool {
         switch self {
@@ -72,16 +73,18 @@ public enum FocusCmdTarget: Equatable, Sendable {
         }
     }
 
-    var isContainerRelative: Bool {
-        if case .containerRelative = self {
-            return true
-        } else {
-            return false
+    var isContainerLocalRelative: Bool {
+        switch self {
+            case .containerRelative, .containerMruRelative: true
+            default: false
         }
     }
 
     static var cliArgsCases: [String] {
-        CardinalDirection.cliArgsCases + DfsNextPrev.cliArgsCases + ContainerFocusNextPrev.cliArgsCases
+        CardinalDirection.cliArgsCases
+            + DfsNextPrev.cliArgsCases
+            + ContainerFocusNextPrev.cliArgsCases
+            + ContainerMruFocusNextPrev.cliArgsCases
     }
 
     static var unionLiteral: String { cliArgsCases.joinedCliArgs }
@@ -90,6 +93,11 @@ public enum FocusCmdTarget: Equatable, Sendable {
 public enum ContainerFocusNextPrev: String, CaseIterable, Equatable, Sendable {
     case containerNext = "container-next"
     case containerPrev = "container-prev"
+}
+
+public enum ContainerMruFocusNextPrev: String, CaseIterable, Equatable, Sendable {
+    case containerMruNext = "container-mru-next"
+    case containerMruPrev = "container-mru-prev"
 }
 
 extension FocusCmdArgs {
@@ -132,11 +140,11 @@ func parseFocusCmdArgs(_ args: StrArrSlice) -> ParsedCmd<FocusCmdArgs> {
             }
             return switch $0.target {
                 case .direction: true
-                case .dfsIndex, .dfsRelative, .windowId, .containerRelative, nil: false
+                case .dfsIndex, .dfsRelative, .windowId, .containerRelative, .containerMruRelative, nil: false
             }
         }
-        .filter("(container-next|container-prev) only supports --ignore-floating") {
-            !($0.target?.isContainerRelative == true)
+        .filter("(container-next|container-prev|container-mru-next|container-mru-prev) only supports --ignore-floating") {
+            !($0.target?.isContainerLocalRelative == true)
                 || ($0.rawBoundaries == nil
                     && $0.rawBoundariesAction == nil
                     && !$0.wrapAroundAlias
@@ -154,6 +162,10 @@ private func parseFocusTarget(i: PosArgParserInput) -> ParsedCliArgs<FocusCmdTar
             return .succ(.containerRelative(.containerNext), advanceBy: 1)
         case ContainerFocusNextPrev.containerPrev.rawValue:
             return .succ(.containerRelative(.containerPrev), advanceBy: 1)
+        case ContainerMruFocusNextPrev.containerMruNext.rawValue:
+            return .succ(.containerMruRelative(.containerMruNext), advanceBy: 1)
+        case ContainerMruFocusNextPrev.containerMruPrev.rawValue:
+            return .succ(.containerMruRelative(.containerMruPrev), advanceBy: 1)
         default:
             if let direction = CardinalDirection(rawValue: i.arg) {
                 return .succ(.direction(direction), advanceBy: 1)

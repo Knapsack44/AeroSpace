@@ -53,6 +53,7 @@ private struct FrozenFocus: AeroAny, Equatable, Sendable {
     let monitor = mainMonitor
     return FrozenFocus(windowId: nil, workspaceName: monitor.activeWorkspace.name, monitorId_oneBased: monitor.monitorId_oneBased ?? 0)
 }()
+@MainActor private(set) var focusSequence: UInt64 = 0
 
 /// Global focus.
 /// Commands must be cautious about accessing this property directly. There are legitimate cases.
@@ -77,6 +78,8 @@ func resolveFocusAfterWindowRemoval(previousWindow: Window?, workspace: Workspac
     }
 
     _focus = newFocus.frozen
+    focusSequence += 1
+    newFocus.windowOrNil?.focusSequence = focusSequence
     let status = newFocus.workspace.workspaceMonitor.setActiveWorkspace(newFocus.workspace)
 
     newFocus.windowOrNil?.markAsMostRecentChild()

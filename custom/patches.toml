@@ -74,3 +74,12 @@ upstream-reference = ''
 tests = ['FocusAfterWindowRemovalTest']
 regressions = ['ASR-0006']
 retire-when = 'Upstream restores the exact previous live workspace window after a focused transient dialog closes.'
+
+[[patch]]
+id = 'container-mru-focus'
+commit-subject = 'Add container-local MRU focus cycling'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['FocusCommandTest']
+regressions = ['ASR-0002']
+retire-when = 'Upstream provides equivalent container-local MRU cycling and all retained tests pass.'

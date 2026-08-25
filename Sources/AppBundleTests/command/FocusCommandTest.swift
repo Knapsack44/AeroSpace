@@ -33,6 +33,14 @@ final class FocusCommandTest: XCTestCase {
             "focus --ignore-floating container-prev",
             FocusCmdArgs(rawArgs: [], target: .containerRelative(.containerPrev)).copy(\.floatingAsTiling, false),
         )
+        testParseSingleCommandSucc(
+            "focus container-mru-next",
+            FocusCmdArgs(rawArgs: [], target: .containerMruRelative(.containerMruNext)),
+        )
+        testParseSingleCommandSucc(
+            "focus --ignore-floating container-mru-prev",
+            FocusCmdArgs(rawArgs: [], target: .containerMruRelative(.containerMruPrev)).copy(\.floatingAsTiling, false),
+        )
 
         assertEquals(
             parseCommand("focus --boundaries workspace --boundaries workspace left").errorOrNil,
@@ -48,8 +56,11 @@ final class FocusCommandTest: XCTestCase {
         )
         assertEquals(
             parseCommand("focus container-next --wrap-around").errorOrNil,
-            "(container-next|container-prev) only supports --ignore-floating",
+            "(container-next|container-prev|container-mru-next|container-mru-prev) only supports --ignore-floating",
         )
+        XCTAssertNotNil(parseCommand("focus container-mru-next --wrap-around").errorOrNil)
+        XCTAssertNotNil(parseCommand("focus container-mru-prev --boundaries workspace").errorOrNil)
+        XCTAssertNotNil(parseCommand("focus container-mru-next --fail-if-fullscreen").errorOrNil)
 
         assertEquals(
             parseCommand("focus --window-id 42 --wrap-around").errorOrNil,
@@ -299,6 +310,214 @@ final class FocusCommandTest: XCTestCase {
         assertEquals(focus.windowOrNil?.windowId, 1)
         await parseCommand("focus container-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(focus.windowOrNil?.windowId, 1)
+    }
+
+    func testFocusContainerMruCyclesStableSnapshot() async {
+        var window1: Window!
+        var window2: Window!
+        var window3: Window!
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            $0.layout = .accordion
+            window1 = TestWindow.new(id: 1, parent: $0)
+            window2 = TestWindow.new(id: 2, parent: $0)
+            window3 = TestWindow.new(id: 3, parent: $0)
+            TestWindow.new(id: 4, parent: $0)
+        }
+
+        assertEquals(window1.focusWindow(), true)
+        assertEquals(window3.focusWindow(), true)
+        assertEquals(window2.focusWindow(), true)
+
+        for expectedWindowId: UInt32 in [3, 1, 4, 2] {
+            await parseCommand("focus container-mru-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+            assertEquals(focus.windowOrNil?.windowId, expectedWindowId)
+        }
+    }
+
+    func testFocusContainerMruPrevStartsAtOldestAndCanChangeDirection() {
+        let (windows, current) = makeMruFocusHistory()
+        let now = ContinuousClock.now
+
+        assertEquals(
+            focusInAncestorContainerMru(current, nextPrev: .containerMruPrev, now: now),
+            true,
+        )
+        assertEquals(focus.windowOrNil?.windowId, 4)
+        assertEquals(
+            focusInAncestorContainerMru(windows[3], nextPrev: .containerMruNext, now: now.advanced(by: .milliseconds(100))),
+            true,
+        )
+        assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerMruRestartsAfterTimeout() {
+        let (windows, current) = makeMruFocusHistory()
+        let now = ContinuousClock.now
+
+        assertEquals(focusInAncestorContainerMru(current, nextPrev: .containerMruNext, now: now), true)
+        assertEquals(focus.windowOrNil?.windowId, 3)
+        assertEquals(
+            focusInAncestorContainerMru(
+                windows[2],
+                nextPrev: .containerMruNext,
+                now: now.advanced(by: .milliseconds(751)),
+            ),
+            true,
+        )
+        assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerMruRestartsAfterExternalFocusChange() {
+        let (windows, current) = makeMruFocusHistory()
+        let now = ContinuousClock.now
+
+        assertEquals(focusInAncestorContainerMru(current, nextPrev: .containerMruNext, now: now), true)
+        assertEquals(windows[3].focusWindow(), true)
+        assertEquals(windows[2].focusWindow(), true)
+        assertEquals(
+            focusInAncestorContainerMru(
+                windows[2],
+                nextPrev: .containerMruNext,
+                now: now.advanced(by: .milliseconds(100)),
+            ),
+            true,
+        )
+        assertEquals(focus.windowOrNil?.windowId, 4)
+    }
+
+    func testFocusContainerMruRestartsWhenWindowSetChanges() {
+        let (windows, current) = makeMruFocusHistory()
+        let now = ContinuousClock.now
+
+        assertEquals(focusInAncestorContainerMru(current, nextPrev: .containerMruNext, now: now), true)
+        TestWindow.new(id: 5, parent: current.parent.orDie())
+        assertEquals(
+            focusInAncestorContainerMru(
+                windows[2],
+                nextPrev: .containerMruNext,
+                now: now.advanced(by: .milliseconds(100)),
+            ),
+            true,
+        )
+        assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerMruRestartsWhenContainerChanges() {
+        let workspace = Workspace.get(byName: name)
+        var firstContainer: TilingContainer!
+        var secondContainer: TilingContainer!
+        workspace.rootTilingContainer.apply {
+            firstContainer = TilingContainer.newHTiles(parent: $0, adaptiveWeight: 1)
+            secondContainer = TilingContainer.newHTiles(parent: $0, adaptiveWeight: 1)
+        }
+        let window1 = TestWindow.new(id: 1, parent: firstContainer)
+        let window2 = TestWindow.new(id: 2, parent: firstContainer)
+        let window3 = TestWindow.new(id: 3, parent: firstContainer)
+        TestWindow.new(id: 4, parent: secondContainer)
+        TestWindow.new(id: 5, parent: secondContainer)
+        assertEquals(window1.focusWindow(), true)
+        assertEquals(window3.focusWindow(), true)
+        assertEquals(window2.focusWindow(), true)
+        let now = ContinuousClock.now
+
+        assertEquals(focusInAncestorContainerMru(window2, nextPrev: .containerMruNext, now: now), true)
+        window3.bind(to: secondContainer, adaptiveWeight: 1, index: INDEX_BIND_LAST)
+        assertEquals(
+            focusInAncestorContainerMru(
+                window3,
+                nextPrev: .containerMruNext,
+                now: now.advanced(by: .milliseconds(100)),
+            ),
+            true,
+        )
+        assertEquals(focus.windowOrNil?.windowId, 4)
+    }
+
+    func testFocusContainerMruIncludesFloatingWindowsByDefault() async {
+        let workspace = Workspace.get(byName: name)
+        TestWindow.new(
+            id: 1,
+            parent: workspace.rootTilingContainer,
+            rect: Rect(topLeftX: 0, topLeftY: 0, width: 100, height: 100),
+        )
+        let floatingWindow = TestWindow.new(
+            id: 2,
+            parent: workspace.floatingWindowsContainer,
+            rect: Rect(topLeftX: 10, topLeftY: 10, width: 100, height: 100),
+        )
+        assertEquals(floatingWindow.focusWindow(), true)
+
+        await parseCommand("focus container-mru-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 1)
+        await parseCommand("focus container-mru-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerMruCanIgnoreFloatingWindows() async {
+        let workspace = Workspace.get(byName: name)
+        let firstTilingWindow = TestWindow.new(
+            id: 1,
+            parent: workspace.rootTilingContainer,
+            rect: Rect(topLeftX: 0, topLeftY: 0, width: 100, height: 100),
+        )
+        let secondTilingWindow = TestWindow.new(
+            id: 2,
+            parent: workspace.rootTilingContainer,
+            rect: Rect(topLeftX: 100, topLeftY: 0, width: 100, height: 100),
+        )
+        TestWindow.new(
+            id: 3,
+            parent: workspace.floatingWindowsContainer,
+            rect: Rect(topLeftX: 10, topLeftY: 10, width: 100, height: 100),
+        )
+        assertEquals(firstTilingWindow.focusWindow(), true)
+        assertEquals(secondTilingWindow.focusWindow(), true)
+
+        await parseCommand("focus --ignore-floating container-mru-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 1)
+    }
+
+    func testFocusContainerMruFallsBackToNearestWiderAncestor() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            TestWindow.new(id: 1, parent: $0)
+            TilingContainer.newVTiles(parent: $0, adaptiveWeight: 1).apply {
+                TilingContainer.newHTiles(parent: $0, adaptiveWeight: 1).apply {
+                    assertEquals(TestWindow.new(id: 2, parent: $0).focusWindow(), true)
+                }
+                TestWindow.new(id: 3, parent: $0)
+            }
+        }
+
+        await parseCommand("focus container-mru-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 3)
+        assertNotEquals(focus.windowOrNil?.windowId, 1)
+    }
+
+    func testFocusContainerMruNoopWithoutWiderAncestor() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            assertEquals(TestWindow.new(id: 1, parent: $0).focusWindow(), true)
+        }
+
+        await parseCommand("focus container-mru-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 1)
+    }
+
+    func testFocusContainerMruFailsWithoutFocusedWindow() async {
+        let result = await parseCommand("focus container-mru-next").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        assertEquals(result.exitCode.rawValue, 2)
+    }
+
+    private func makeMruFocusHistory() -> ([Window], Window) {
+        var windows: [Window] = []
+        Workspace.get(byName: name).rootTilingContainer.apply { parent in
+            parent.layout = .accordion
+            windows = (1 ... 4).map { TestWindow.new(id: UInt32($0), parent: parent) }
+        }
+        assertEquals(windows[0].focusWindow(), true)
+        assertEquals(windows[2].focusWindow(), true)
+        assertEquals(windows[1].focusWindow(), true)
+        return (windows, windows[1])
     }
 
     func testFocusDfsRelative() async {
