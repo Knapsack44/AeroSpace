@@ -119,3 +119,12 @@ upstream-reference = ''
 tests = ['NativeFocusRetryTest']
 regressions = ['ASR-0004', 'ASR-0005']
 retire-when = 'Retire together with native-focus-visible-workspaces when the native focus retry is no longer needed.'
+
+[[patch]]
+id = 'native-focus-front-window-preservation'
+commit-subject = 'Preserve visible workspace front windows'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['NativeFocusZOrderTest']
+regressions = ['ASR-0004']
+retire-when = 'Retire with native-focus-visible-workspaces when target-app activation no longer disturbs other visible workspaces.'

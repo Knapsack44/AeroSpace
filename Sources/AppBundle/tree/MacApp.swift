@@ -5,6 +5,21 @@ func shouldRestoreVisibleWorkspaceFrontWindow(targetAppPid: pid_t, frontWindowAp
     targetAppPid != frontWindowAppPid
 }
 
+func selectVisibleWorkspaceFrontWindowsToRestore<Candidate, WorkspaceId: Hashable>(
+    from candidates: [Candidate],
+    targetAppPid: pid_t,
+    workspaceId: (Candidate) -> WorkspaceId,
+    appPid: (Candidate) -> pid_t,
+) -> [Candidate] {
+    var handledWorkspaces: Set<WorkspaceId> = []
+    return candidates.compactMap { candidate in
+        guard handledWorkspaces.insert(workspaceId(candidate)).inserted else { return nil }
+        return shouldRestoreVisibleWorkspaceFrontWindow(targetAppPid: targetAppPid, frontWindowAppPid: appPid(candidate))
+            ? candidate
+            : nil
+    }
+}
+
 // Potential alternative implementation
 // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0392-custom-actor-executors.md
 // (only available since macOS 14)
@@ -174,16 +189,19 @@ final class MacApp: AbstractApp {
                 return window
             }
         }
-        var handledWorkspaces: Set<Workspace> = []
-        return windowIds.compactMap { candidateWindowId in
+        let candidates = windowIds.compactMap { candidateWindowId -> (window: MacWindow, workspace: Workspace)? in
             guard let window = MacWindow.get(byId: candidateWindowId) as? MacWindow,
                   let workspace = window.visualWorkspace,
-                  visibleWorkspaces.contains(workspace),
-                  shouldRestoreVisibleWorkspaceFrontWindow(targetAppPid: pid, frontWindowAppPid: window.app.pid),
-                  handledWorkspaces.insert(workspace).inserted
+                  visibleWorkspaces.contains(workspace)
             else { return nil }
-            return window
+            return (window, workspace)
         }
+        return selectVisibleWorkspaceFrontWindowsToRestore(
+            from: candidates,
+            targetAppPid: pid,
+            workspaceId: { $0.workspace },
+            appPid: { $0.window.app.pid },
+        ).map { $0.window }
     }
 
     @MainActor private func focusNativeWindow(_ windowId: UInt32, activateApp: Bool) {
