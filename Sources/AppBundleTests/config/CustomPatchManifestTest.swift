@@ -226,7 +226,6 @@ final class CustomPatchManifestTest: XCTestCase {
         try index.write(to: indexUrl, atomically: true, encoding: .utf8)
 
         let process = Process()
-        let stdout = Pipe()
         let stderr = Pipe()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = [
@@ -234,14 +233,13 @@ final class CustomPatchManifestTest: XCTestCase {
             manifestUrl.path,
             indexUrl.path,
         ]
-        process.standardOutput = stdout
+        process.standardOutput = FileHandle.nullDevice
         process.standardError = stderr
         try process.run()
         process.waitUntilExit()
 
         return CommandResult(
             status: process.terminationStatus,
-            stdout: String(decoding: stdout.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self),
             stderr: String(decoding: stderr.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self),
         )
     }
@@ -342,19 +340,17 @@ final class CustomPatchManifestTest: XCTestCase {
         environment: [String: String] = [:],
     ) throws -> CommandResult {
         let process = Process()
-        let stdout = Pipe()
         let stderr = Pipe()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
         process.currentDirectoryURL = currentDirectory
         process.environment = ProcessInfo.processInfo.environment.merging(environment) { _, override in override }
-        process.standardOutput = stdout
+        process.standardOutput = FileHandle.nullDevice
         process.standardError = stderr
         try process.run()
         process.waitUntilExit()
         return CommandResult(
             status: process.terminationStatus,
-            stdout: String(decoding: stdout.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self),
             stderr: String(decoding: stderr.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self),
         )
     }
@@ -370,7 +366,6 @@ final class CustomPatchManifestTest: XCTestCase {
 
 private struct CommandResult {
     let status: Int32
-    let stdout: String
     let stderr: String
 }
 
