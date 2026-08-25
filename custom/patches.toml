@@ -110,3 +110,12 @@ upstream-reference = 'https://github.com/nikitabobko/AeroSpace/issues/1257'
 tests = ['AsyncTimeoutTest']
 regressions = ['ASR-0007']
 retire-when = 'Upstream bounds AX title reads without blocking the server and all retained tests pass.'
+
+[[patch]]
+id = 'native-focus-retry-task-lint'
+commit-subject = 'Use unstructured task for native focus retry'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['NativeFocusRetryTest']
+regressions = ['ASR-0004', 'ASR-0005']
+retire-when = 'Retire together with native-focus-visible-workspaces when the native focus retry is no longer needed.'

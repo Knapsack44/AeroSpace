@@ -29,7 +29,7 @@ struct NativeFocusRetry {
 
 @MainActor func scheduleNativeFocusRetry(windowId: UInt32, _ retry: @escaping @MainActor () -> Void) {
     nativeFocusRetry.request(windowId: windowId)
-    Task { @MainActor in
+    Task.startUnstructured { @MainActor in
         // Some apps honor AX mainness only after their activation reaches the event loop.
         try? await Task.sleep(for: .milliseconds(75))
         guard nativeFocusRetry.consume(requestedWindowId: windowId, focusedWindowId: focus.windowOrNil?.windowId) != nil else {
