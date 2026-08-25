@@ -83,3 +83,12 @@ upstream-reference = ''
 tests = ['FocusCommandTest']
 regressions = ['ASR-0002']
 retire-when = 'Upstream provides equivalent container-local MRU cycling and all retained tests pass.'
+
+[[patch]]
+id = 'accordion-cardinal-focus'
+commit-subject = 'Respect accordion boundaries during cardinal focus'
+status = 'submitted'
+upstream-reference = 'https://github.com/nikitabobko/AeroSpace/discussions/2236'
+tests = ['FocusCommandTest']
+regressions = ['ASR-0003']
+retire-when = 'Upstream respects accordion overlap boundaries during cardinal focus and all retained tests pass.'

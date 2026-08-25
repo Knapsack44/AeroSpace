@@ -247,6 +247,35 @@ final class FocusCommandTest: XCTestCase {
         assertEquals(focus.windowOrNil?.windowId, 1)
     }
 
+    func testCardinalFocusSkipsOverlappingAccordionSiblings() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            TestWindow.new(id: 1, parent: $0)
+            TilingContainer.newHTiles(parent: $0, adaptiveWeight: 1).apply {
+                $0.layout = .accordion
+                TestWindow.new(id: 2, parent: $0)
+                assertEquals(TestWindow.new(id: 3, parent: $0).focusWindow(), true)
+            }
+        }
+
+        await parseCommand("focus left").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 1)
+    }
+
+    func testCardinalFocusEntersAccordionAtMostRecentChild() async {
+        Workspace.get(byName: name).rootTilingContainer.apply {
+            let startWindow = TestWindow.new(id: 1, parent: $0)
+            TilingContainer.newHTiles(parent: $0, adaptiveWeight: 1).apply {
+                $0.layout = .accordion
+                TestWindow.new(id: 2, parent: $0)
+                assertEquals(TestWindow.new(id: 3, parent: $0).focusWindow(), true)
+            }
+            assertEquals(startWindow.focusWindow(), true)
+        }
+
+        await parseCommand("focus right").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        assertEquals(focus.windowOrNil?.windowId, 3)
+    }
+
     func testFocusContainerRelative() async {
         Workspace.get(byName: name).rootTilingContainer.apply {
             TestWindow.new(id: 1, parent: $0)

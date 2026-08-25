@@ -25,7 +25,7 @@ struct FocusCommand: Command {
         switch args.resolvedTarget {
             case .direction(let direction):
                 let window = target.windowOrNil
-                if let (parent, ownIndex) = window?.closestParent(hasChildrenInDirection: direction, withLayout: nil) {
+                if let (parent, ownIndex) = window?.closestParent(hasChildrenInDirection: direction, withLayout: .tiles) {
                     guard let windowToFocus = parent.children[ownIndex + direction.focusOffset]
                         .findLeafWindowRecursive(snappedTo: direction.opposite) else { return .fail(io.err(bugPrompt())) }
                     return .from(bool: windowToFocus.focusWindow())
@@ -325,11 +325,16 @@ extension TreeNode {
             case .window(let window):
                 return window
             case .tilingContainer(let container):
-                if direction.orientation == container.orientation {
-                    return (direction.isPositive ? container.children.last : container.children.first)?
-                        .findLeafWindowRecursive(snappedTo: direction)
-                } else {
-                    return mostRecentChild?.findLeafWindowRecursive(snappedTo: direction)
+                switch container.layout {
+                    case .accordion:
+                        return mostRecentChild?.findLeafWindowRecursive(snappedTo: direction)
+                    case .tiles:
+                        if direction.orientation == container.orientation {
+                            return (direction.isPositive ? container.children.last : container.children.first)?
+                                .findLeafWindowRecursive(snappedTo: direction)
+                        } else {
+                            return mostRecentChild?.findLeafWindowRecursive(snappedTo: direction)
+                        }
                 }
             case .macosMinimizedWindowsContainer, .macosFullscreenWindowsContainer,
                  .macosPopupWindowsContainer, .macosHiddenAppsWindowsContainer,
