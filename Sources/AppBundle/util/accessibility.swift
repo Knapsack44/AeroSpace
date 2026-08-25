@@ -236,9 +236,10 @@ enum Ax {
         getter: { $0 as? Bool },
         setter: { $0 as CFTypeRef },
     )
-    static let isFocused = ReadableAttrImpl<Bool>(
+    static let isFocusedAttr = WritableAttrImpl<Bool>(
         key: kAXFocusedAttribute,
         getter: { $0 as? Bool },
+        setter: { $0 as CFTypeRef },
     )
     static let isMainAttr = WritableAttrImpl<Bool>(
         key: kAXMainAttribute,
@@ -275,9 +276,10 @@ enum Ax {
         key: kAXWindowsAttribute,
         getter: { ($0 as? NSArray)?.compactMap(windowOrNil).map { ($0.windowId, $0.ax.cast) } ?? [] },
     )
-    static let focusedWindowAttr = ReadableAttrImpl<WindowIdAndAxUiElementMock>(
+    static let focusedWindowAttr = WritableAttrImpl<WindowIdAndAxUiElementMock>(
         key: kAXFocusedWindowAttribute,
         getter: windowOrNil,
+        setter: { $0.ax as! AXUIElement },
     )
     //static let mainWindowAttr = ReadableAttrImpl<AXUIElement>(
     //    key: kAXMainWindowAttribute,

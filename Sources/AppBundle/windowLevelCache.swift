@@ -4,6 +4,12 @@ import Foundation
 @MainActor
 private var cache: [UInt32: MacOsWindowLevel] = [:]
 
+func getOnScreenWindowIdsInZOrder() -> [UInt32]? {
+    let options = CGWindowListOption(arrayLiteral: .excludeDesktopElements, .optionOnScreenOnly)
+    guard let windows = CGWindowListCopyWindowInfo(options, CGWindowID(0)) as? [[CFString: Any]] else { return nil }
+    return windows.compactMap { $0[kCGWindowNumber] as? UInt32 }
+}
+
 @MainActor
 func getWindowLevel(for windowId: UInt32) -> MacOsWindowLevel? {
     if let existing = cache[windowId] { return existing }

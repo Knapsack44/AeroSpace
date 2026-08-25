@@ -162,7 +162,7 @@ extension AxUiElementMock {
             get(Ax.zoomButtonAttr) != nil ||
             get(Ax.minimizeButtonAttr) != nil ||
 
-            get(Ax.isFocused) == true ||  // 3 different ways to detect if the window is focused
+            get(Ax.isFocusedAttr) == true ||  // 3 different ways to detect if the window is focused
             get(Ax.isMainAttr) == true ||
             axApp.get(Ax.focusedWindowAttr)?.windowId == self.containingWindowId() ||
 
@@ -183,7 +183,7 @@ extension AxUiElementMock {
             get(Ax.zoomButtonAttr) == nil &&
             get(Ax.minimizeButtonAttr) == nil &&
 
-            get(Ax.isFocused) == false &&  // Three different ways to detect if the window is not focused
+            get(Ax.isFocusedAttr) == false &&  // Three different ways to detect if the window is not focused
             get(Ax.isMainAttr) == false &&
             axApp.get(Ax.focusedWindowAttr)?.windowId != containingWindowId() &&
 

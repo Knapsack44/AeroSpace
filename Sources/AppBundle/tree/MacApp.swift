@@ -1,6 +1,10 @@
 import AppKit
 import Common
 
+func shouldRestoreVisibleWorkspaceFrontWindow(targetAppPid: pid_t, frontWindowAppPid: pid_t) -> Bool {
+    targetAppPid != frontWindowAppPid
+}
+
 // Potential alternative implementation
 // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0392-custom-actor-executors.md
 // (only available since macOS 14)
@@ -137,6 +141,7 @@ final class MacApp: AbstractApp {
 
     @MainActor func nativeFocus(_ windowId: UInt32) {
         if serverArgs.isReadOnly { return }
+        cancelNativeFocusRetry()
         MacApp.focusJob?.cancel()
         // Performance optimization. If possible avoid doing AX requests
         // (important for apps which are slow at responding even such basic AX requests. E.g. Godot)
@@ -146,12 +151,56 @@ final class MacApp: AbstractApp {
         {
             nsApp.activate(options: .activateIgnoringOtherApps)
         } else {
-            MacApp.focusJob = withWindowAsync(windowId, .cancellable) { [nsApp] window, job in
-                // Raise firstly to make sure that by the time we activate the app, the window would be already on top
-                window.set(Ax.isMainAttr, true)
-                AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+            let visibleWorkspaceFrontWindows = visibleWorkspaceFrontWindows(excluding: windowId)
+            focusNativeWindow(windowId, activateApp: true)
+            scheduleNativeFocusRetry(windowId: windowId) { [weak self] in
+                self?.focusNativeWindow(windowId, activateApp: false)
+                for window in visibleWorkspaceFrontWindows {
+                    window.macApp.raiseNativeWindow(window.windowId)
+                }
+            }
+        }
+    }
+
+    @MainActor private func visibleWorkspaceFrontWindows(excluding windowId: UInt32) -> [MacWindow] {
+        let targetWorkspace = MacWindow.get(byId: windowId)?.visualWorkspace
+        let visibleWorkspaces = Workspace.all.filter { $0.isVisible && $0 != targetWorkspace }.toSet()
+        guard let windowIds = getOnScreenWindowIdsInZOrder() else {
+            return visibleWorkspaces.compactMap { workspace in
+                guard let window = workspace.mostRecentWindowRecursive as? MacWindow,
+                      shouldRestoreVisibleWorkspaceFrontWindow(targetAppPid: pid, frontWindowAppPid: window.app.pid)
+                else { return nil }
+                return window
+            }
+        }
+        var handledWorkspaces: Set<Workspace> = []
+        return windowIds.compactMap { candidateWindowId in
+            guard let window = MacWindow.get(byId: candidateWindowId) as? MacWindow,
+                  let workspace = window.visualWorkspace,
+                  visibleWorkspaces.contains(workspace),
+                  shouldRestoreVisibleWorkspaceFrontWindow(targetAppPid: pid, frontWindowAppPid: window.app.pid),
+                  handledWorkspaces.insert(workspace).inserted
+            else { return nil }
+            return window
+        }
+    }
+
+    @MainActor private func focusNativeWindow(_ windowId: UInt32, activateApp: Bool) {
+        MacApp.focusJob = withWindowAsync(windowId, .cancellable) { [nsApp, axApp] window, job in
+            // Raise firstly to make sure that by the time we activate the app, the window would be already on top.
+            window.set(Ax.isMainAttr, true)
+            window.set(Ax.isFocusedAttr, true)
+            axApp.threadGuarded.set(Ax.focusedWindowAttr, (windowId, window))
+            AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+            if activateApp {
                 nsApp.activate(options: .activateIgnoringOtherApps)
             }
+        }
+    }
+
+    @MainActor private func raiseNativeWindow(_ windowId: UInt32) {
+        _ = withWindowAsync(windowId, .cancellable) { window, job in
+            AXUIElementPerformAction(window, kAXRaiseAction as CFString)
         }
     }
 

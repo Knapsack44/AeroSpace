@@ -92,3 +92,12 @@ upstream-reference = 'https://github.com/nikitabobko/AeroSpace/discussions/2236'
 tests = ['FocusCommandTest']
 regressions = ['ASR-0003']
 retire-when = 'Upstream respects accordion overlap boundaries during cardinal focus and all retained tests pass.'
+
+[[patch]]
+id = 'native-focus-visible-workspaces'
+commit-subject = 'Stabilize native focus across visible workspaces'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['AccessibilityAttributeTest', 'NativeFocusRetryTest', 'NativeFocusZOrderTest']
+regressions = ['ASR-0004', 'ASR-0005']
+retire-when = 'Upstream focuses one native window without raising same-app windows on other visible workspaces and retained tests pass.'
