@@ -7,7 +7,34 @@ test $# -eq 2 || {
     exit 2
 }
 
-python3 - "$1" "$2" <<'PY'
+python_with_tomllib() {
+    local candidate
+    local homebrew_prefix
+
+    candidate="$(command -v python3 2>/dev/null || true)"
+    if test -n "$candidate" && "$candidate" -c 'import tomllib' 2>/dev/null; then
+        printf '%s\n' "$candidate"
+        return
+    fi
+
+    if command -v brew >/dev/null 2>&1; then
+        homebrew_prefix="$(brew --prefix python 2>/dev/null || true)"
+        candidate="$homebrew_prefix/bin/python3"
+        if test -x "$candidate" && "$candidate" -c 'import tomllib' 2>/dev/null; then
+            printf '%s\n' "$candidate"
+            return
+        fi
+    fi
+
+    return 1
+}
+
+python_command="$(python_with_tomllib)" || {
+    printf 'Python 3.11 or newer with tomllib is required\n' >&2
+    exit 1
+}
+
+"$python_command" - "$1" "$2" <<'PY'
 import json
 import pathlib
 import re
