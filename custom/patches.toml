@@ -85,15 +85,6 @@ regressions = ['ASR-0002']
 retire-when = 'Upstream provides equivalent container-local MRU cycling and all retained tests pass.'
 
 [[patch]]
-id = 'container-mru-focus-timeout'
-commit-subject = 'Extend container MRU focus cycle timeout'
-status = 'custom-only'
-upstream-reference = ''
-tests = ['FocusCommandTest']
-regressions = ['ASR-0002']
-retire-when = 'Retire with container-mru-focus when the custom MRU cycle is no longer needed.'
-
-[[patch]]
 id = 'accordion-cardinal-focus'
 commit-subject = 'Respect accordion boundaries during cardinal focus'
 status = 'submitted'
@@ -137,3 +128,12 @@ upstream-reference = ''
 tests = ['NativeFocusZOrderTest']
 regressions = ['ASR-0004']
 retire-when = 'Retire with native-focus-visible-workspaces when target-app activation no longer disturbs other visible workspaces.'
+
+[[patch]]
+id = 'container-mru-focus-timeout'
+commit-subject = 'Extend container MRU focus cycle timeout'
+status = 'custom-only'
+upstream-reference = ''
+tests = ['FocusCommandTest']
+regressions = ['ASR-0002']
+retire-when = 'Retire with container-mru-focus when the custom MRU cycle is no longer needed.'
