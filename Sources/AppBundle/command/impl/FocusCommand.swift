@@ -92,7 +92,7 @@ struct FocusCommand: Command {
     return windows[wrappedIndex].focusWindow()
 }
 
-private let containerMruFocusCycleTimeout = Duration.milliseconds(750)
+private let containerMruFocusCycleTimeout = Duration.seconds(5)
 
 @MainActor private var containerMruFocusCycle: ContainerMruFocusCycle?
 

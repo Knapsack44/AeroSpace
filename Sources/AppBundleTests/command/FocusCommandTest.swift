@@ -389,11 +389,28 @@ final class FocusCommandTest: XCTestCase {
             focusInAncestorContainerMru(
                 windows[2],
                 nextPrev: .containerMruNext,
-                now: now.advanced(by: .milliseconds(751)),
+                now: now.advanced(by: .milliseconds(5001)),
             ),
             true,
         )
         assertEquals(focus.windowOrNil?.windowId, 2)
+    }
+
+    func testFocusContainerMruContinuesBeforeFiveSecondTimeout() {
+        let (windows, current) = makeMruFocusHistory()
+        let now = ContinuousClock.now
+
+        assertEquals(focusInAncestorContainerMru(current, nextPrev: .containerMruNext, now: now), true)
+        assertEquals(focus.windowOrNil?.windowId, 3)
+        assertEquals(
+            focusInAncestorContainerMru(
+                windows[2],
+                nextPrev: .containerMruNext,
+                now: now.advanced(by: .milliseconds(4999)),
+            ),
+            true,
+        )
+        assertEquals(focus.windowOrNil?.windowId, 1)
     }
 
     func testFocusContainerMruRestartsAfterExternalFocusChange() {
